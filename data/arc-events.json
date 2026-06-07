@@ -1,0 +1,217 @@
+[
+  {
+    "agentId": 39369,
+    "timestamp": 1780863642485,
+    "risk": 60,
+    "trend": "stable",
+    "change": 0,
+    "headline": "Israel strikes Beirut suburb days after US-brokered truce",
+    "category": "middle_east",
+    "confidence": 100,
+    "tags": [
+      "military_action",
+      "middle_east"
+    ],
+    "topEvents": [
+      {
+        "headline": "Israel strikes Beirut suburb days after US-brokered truce",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Steve Rosenberg: Russia's economic forum overshadowed by drone attacks on St Petersburg",
+        "score": 35,
+        "category": "war",
+        "tags": [
+          "war",
+          "military_action"
+        ]
+      },
+      {
+        "headline": "Live Updates: Iran Fires Missiles at Israel for First Time Since April Cease-Fire",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      }
+    ]
+  },
+  {
+    "agentId": 39369,
+    "timestamp": 1780863043533,
+    "risk": 60,
+    "trend": "rising",
+    "change": 60,
+    "headline": "Israel strikes Beirut suburb days after US-brokered truce",
+    "category": "middle_east",
+    "confidence": 100,
+    "tags": [
+      "military_action",
+      "middle_east"
+    ],
+    "topEvents": [
+      {
+        "headline": "Israel strikes Beirut suburb days after US-brokered truce",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Steve Rosenberg: Russia's economic forum overshadowed by drone attacks on St Petersburg",
+        "score": 35,
+        "category": "war",
+        "tags": [
+          "war",
+          "military_action"
+        ]
+      },
+      {
+        "headline": "Live Updates: Iran Fires Missiles at Israel for First Time Since April Cease-Fire",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      }
+    ]
+  },
+  {
+    "agentId": 39369,
+    "timestamp": 1780862599370,
+    "risk": null,
+    "trend": "falling",
+    "change": -60,
+    "headline": "Israel strikes Beirut suburb days after US-brokered truce",
+    "category": "middle_east",
+    "confidence": 100,
+    "tags": [
+      "military_action",
+      "middle_east"
+    ],
+    "topEvents": [
+      {
+        "headline": "Israel strikes Beirut suburb days after US-brokered truce",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Steve Rosenberg: Russia's economic forum overshadowed by drone attacks on St Petersburg",
+        "score": 35,
+        "category": "war",
+        "tags": [
+          "war",
+          "military_action"
+        ]
+      },
+      {
+        "headline": "Live Updates: Iran Fires Missiles at Israel for First Time Since April Cease-Fire",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      }
+    ]
+  },
+  {
+    "agentId": 39369,
+    "timestamp": 1780862025671,
+    "risk": 60,
+    "trend": "falling",
+    "change": -40,
+    "headline": "Israel strikes Beirut suburb days after US-brokered truce",
+    "category": "middle_east",
+    "confidence": 100,
+    "tags": [
+      "military_action",
+      "middle_east"
+    ],
+    "topEvents": [
+      {
+        "headline": "Israel strikes Beirut suburb days after US-brokered truce",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Steve Rosenberg: Russia's economic forum overshadowed by drone attacks on St Petersburg",
+        "score": 35,
+        "category": "war",
+        "tags": [
+          "war",
+          "military_action"
+        ]
+      },
+      {
+        "headline": "Live Updates: Iran Fires Missiles at Israel for First Time Since April Cease-Fire",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      }
+    ]
+  },
+  {
+    "agentId": 39369,
+    "timestamp": 1780861038180,
+    "risk": 100,
+    "trend": "stable",
+    "change": 0,
+    "headline": "Israel strikes Beirut suburb days after US-brokered truce",
+    "category": "middle_east",
+    "confidence": 100,
+    "tags": [
+      "military_action",
+      "middle_east"
+    ],
+    "topEvents": [
+      {
+        "headline": "Israel strikes Beirut suburb days after US-brokered truce",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Steve Rosenberg: Russia's economic forum overshadowed by drone attacks on St Petersburg",
+        "score": 35,
+        "category": "war",
+        "tags": [
+          "war",
+          "military_action"
+        ]
+      },
+      {
+        "headline": "Arab Gunman Kills One in Attack on Central Israel",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      }
+    ]
+  }
+]

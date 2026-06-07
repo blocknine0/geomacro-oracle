@@ -1,0 +1,13 @@
+node_modules
+
+.env
+
+dist
+
+coverage
+
+data/state/last-alert.json
+
+data/state/history.json
+
+*.log

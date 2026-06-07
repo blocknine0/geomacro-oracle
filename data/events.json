@@ -1,0 +1,23 @@
+[
+  {
+    "id": 1,
+    "headline": "China expands rare earth export controls",
+    "category": "rare_earth",
+    "severity": 15,
+    "source": "Reuters"
+  },
+  {
+    "id": 2,
+    "headline": "Red Sea shipping disruptions intensify",
+    "category": "shipping",
+    "severity": 12,
+    "source": "AP"
+  },
+  {
+    "id": 3,
+    "headline": "New sanctions announced on strategic minerals",
+    "category": "sanctions",
+    "severity": 10,
+    "source": "Government Release"
+  }
+]

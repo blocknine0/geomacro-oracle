@@ -1,110 +1,146 @@
-\# GeoMacro Oracle
+# GeoMacro Oracle
 
+**ARC Agent ID:** 39369
 
+GeoMacro Oracle is an autonomous geopolitical intelligence agent designed to transform real-world events into machine-readable risk signals.
 
-ARC Agent ID: 39369
+Built for ARC Testnet, the system continuously monitors geopolitical conflicts, sanctions, energy markets, shipping disruptions, and strategic supply chains to identify emerging global risks before they propagate through markets.
 
+---
 
+## Mission
 
-GeoMacro Oracle is an autonomous geopolitical and macro intelligence agent built for ARC Testnet.
+Financial markets react to geopolitical reality.
 
+GeoMacro Oracle attempts to quantify that reality.
 
+The agent converts global events into structured intelligence that can be consumed by:
 
-\## Features
+* Autonomous agents
+* Prediction markets
+* DAOs
+* Treasury managers
+* Macro researchers
+* Onchain risk systems
 
+---
 
+## Current Capabilities
 
-\* Live global news ingestion
+### Intelligence Collection
 
-\* Geopolitical risk detection
+* Live multi-source news ingestion
+* Geopolitical event monitoring
+* Energy market monitoring
+* Shipping disruption monitoring
+* Rare-earth supply chain monitoring
+* Sanctions monitoring
 
-\* Historical trend tracking
+### Risk Analysis
 
-\* ARC event publishing
+* Event classification
+* Dynamic risk scoring
+* Global Risk Index generation
+* Trend detection
+* Regime-shift identification
 
-\* Telegram alert system
+### Autonomous Actions
 
-\* Risk regime monitoring
+* ARC event publishing
+* Historical memory storage
+* Telegram intelligence alerts
+* Continuous monitoring mode
 
+---
 
-
-\## News Sources
-
-
-
-\* BBC World
-
-\* New York Times World
-
-\* Al Jazeera
-
-\* Additional RSS sources
-
-
-
-\## Architecture
-
-
+## Intelligence Pipeline
 
 News Sources
-
 ↓
-
 Collectors
-
 ↓
-
-Scoring Engine
-
+Event Classification
 ↓
-
+Risk Scoring Engine
+↓
 Global Risk Engine
-
 ↓
-
-Trend Detection
-
+Historical Trend Analysis
 ↓
-
-ARC Events
-
+ARC Event Publishing
 ↓
+Alert Distribution
 
-Telegram Alerts
+---
 
+## Data Sources
 
+* BBC World
+* New York Times World
+* Al Jazeera
+* Additional geopolitical RSS feeds
 
-\## Installation
+---
 
+## Example Output
 
+Global Risk: 60
 
+Headline:
+Israel strikes Beirut suburb days after US-brokered truce
+
+Trend:
+Stable
+
+Drivers:
+military_action, middle_east
+
+Confidence:
+100%
+
+---
+
+## Vision
+
+GeoMacro Oracle is evolving into an autonomous geopolitical forecasting network.
+
+Future versions will:
+
+* Generate geopolitical hypotheses
+* Forecast escalation probabilities
+* Track geopolitical narratives
+* Create machine-readable macro theses
+* Integrate with prediction markets
+* Power autonomous risk economies
+
+The long-term objective is to build an Autonomous Geopolitical Intelligence Layer for Web3.
+
+---
+
+## Installation
+
+```bash
 npm install
+```
 
+## Run
 
-
-\## Run
-
-
-
+```bash
 npm run start
+```
 
+## Watch Mode
 
-
-\## Watch Mode
-
-
-
+```bash
 npm run watcher
+```
 
+---
 
+## ARC
 
-\## Agent
+Agent ID: 39369
 
+Project: GeoMacro Oracle
 
-
-ARC Agent ID: 39369
-
-Project Name: GeoMacro Oracle
-
-
-
+Built for ARC Testnet.

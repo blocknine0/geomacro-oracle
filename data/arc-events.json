@@ -1,6 +1,256 @@
 [
   {
     "agentId": 39369,
+    "timestamp": 1780962914513,
+    "risk": 59,
+    "trend": "stable",
+    "change": 0,
+    "headline": "Iran and Israel say they will pause strikes but warn of retaliation if ceasefire breached again",
+    "category": "middle_east",
+    "confidence": 100,
+    "tags": [
+      "military_action",
+      "middle_east"
+    ],
+    "topEvents": [
+      {
+        "headline": "Iran and Israel say they will pause strikes but warn of retaliation if ceasefire breached again",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Iran's strike on Israel suggests the regime's sense of resilience is growing",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Steve Rosenberg: Russia's economic forum overshadowed by drone attacks on St Petersburg",
+        "score": 35,
+        "category": "war",
+        "tags": [
+          "war",
+          "military_action"
+        ]
+      }
+    ],
+    "forecast": {
+      "narrative": "Iran-Israel Escalation",
+      "stage": "Fragile Ceasefire",
+      "escalationProbability": 70,
+      "sanctionsProbability": 20,
+      "shippingProbability": 15,
+      "energyShockProbability": 25
+    }
+  },
+  {
+    "agentId": 39369,
+    "timestamp": 1780962389199,
+    "risk": 59,
+    "trend": "stable",
+    "change": 0,
+    "headline": "Iran and Israel say they will pause strikes but warn of retaliation if ceasefire breached again",
+    "category": "middle_east",
+    "confidence": 100,
+    "tags": [
+      "military_action",
+      "middle_east"
+    ],
+    "topEvents": [
+      {
+        "headline": "Iran and Israel say they will pause strikes but warn of retaliation if ceasefire breached again",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Iran's strike on Israel suggests the regime's sense of resilience is growing",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Steve Rosenberg: Russia's economic forum overshadowed by drone attacks on St Petersburg",
+        "score": 35,
+        "category": "war",
+        "tags": [
+          "war",
+          "military_action"
+        ]
+      }
+    ],
+    "forecast": {
+      "narrative": "Iran-Israel Escalation",
+      "escalationProbability": 55,
+      "sanctionsProbability": 20,
+      "shippingProbability": 15,
+      "energyShockProbability": 25
+    }
+  },
+  {
+    "agentId": 39369,
+    "timestamp": 1780962044783,
+    "risk": 59,
+    "trend": "stable",
+    "change": 0,
+    "headline": "Iran and Israel say they will pause strikes but warn of retaliation if ceasefire breached again",
+    "category": "middle_east",
+    "confidence": 100,
+    "tags": [
+      "military_action",
+      "middle_east"
+    ],
+    "topEvents": [
+      {
+        "headline": "Iran and Israel say they will pause strikes but warn of retaliation if ceasefire breached again",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Iran's strike on Israel suggests the regime's sense of resilience is growing",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Steve Rosenberg: Russia's economic forum overshadowed by drone attacks on St Petersburg",
+        "score": 35,
+        "category": "war",
+        "tags": [
+          "war",
+          "military_action"
+        ]
+      }
+    ],
+    "forecast": {
+      "narrative": "Iran-Israel Escalation",
+      "escalationProbability": 55,
+      "sanctionsProbability": 20,
+      "shippingProbability": 15,
+      "energyShockProbability": 25
+    }
+  },
+  {
+    "agentId": 39369,
+    "timestamp": 1780961748073,
+    "risk": 59,
+    "trend": "stable",
+    "change": 0,
+    "headline": "Iran and Israel say they will pause strikes but warn of retaliation if ceasefire breached again",
+    "category": "middle_east",
+    "confidence": 100,
+    "tags": [
+      "military_action",
+      "middle_east"
+    ],
+    "topEvents": [
+      {
+        "headline": "Iran and Israel say they will pause strikes but warn of retaliation if ceasefire breached again",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Iran's strike on Israel suggests the regime's sense of resilience is growing",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Steve Rosenberg: Russia's economic forum overshadowed by drone attacks on St Petersburg",
+        "score": 35,
+        "category": "war",
+        "tags": [
+          "war",
+          "military_action"
+        ]
+      }
+    ],
+    "forecast": {
+      "narrative": "Iran-Israel Escalation",
+      "escalationProbability": 55,
+      "sanctionsProbability": 20,
+      "shippingProbability": 15,
+      "energyShockProbability": 25
+    }
+  },
+  {
+    "agentId": 39369,
+    "timestamp": 1780961479306,
+    "risk": 59,
+    "trend": "falling",
+    "change": -1,
+    "headline": "Iran and Israel say they will pause strikes but warn of retaliation if ceasefire breached again",
+    "category": "middle_east",
+    "confidence": 100,
+    "tags": [
+      "military_action",
+      "middle_east"
+    ],
+    "topEvents": [
+      {
+        "headline": "Iran and Israel say they will pause strikes but warn of retaliation if ceasefire breached again",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Iran's strike on Israel suggests the regime's sense of resilience is growing",
+        "score": 35,
+        "category": "middle_east",
+        "tags": [
+          "military_action",
+          "middle_east"
+        ]
+      },
+      {
+        "headline": "Steve Rosenberg: Russia's economic forum overshadowed by drone attacks on St Petersburg",
+        "score": 35,
+        "category": "war",
+        "tags": [
+          "war",
+          "military_action"
+        ]
+      }
+    ],
+    "forecast": {
+      "escalationProbability": 20,
+      "sanctionsProbability": 20,
+      "shippingProbability": 15,
+      "energyShockProbability": 25
+    }
+  },
+  {
+    "agentId": 39369,
     "timestamp": 1780863642485,
     "risk": 60,
     "trend": "stable",

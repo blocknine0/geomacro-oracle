@@ -6,6 +6,14 @@ import { generateGlobalRisk } from "./signals/global-risk.js";
 import { sendTelegramAlert } from "./alerts/telegram.js";
 import { shouldSendAlert } from "./alerts/alert-guard.js";
 import {
+  saveEvent
+}
+from "./memory/event-memory.js";
+import {
+  buildForecast
+}
+from "./forecasts/forecast-engine.js";
+import {
   saveRisk,
   getTrend
 } 
@@ -15,8 +23,36 @@ from "./history/risk-history.js";
 
 async function main() {
   const risk = await generateGlobalRisk();
+
 await saveRisk(
   risk.globalRisk
+);
+
+const forecast =
+  buildForecast(risk);
+
+console.log(
+  "Forecast:",
+  forecast
+);
+
+await saveEvent({
+
+  timestamp:
+    risk.timestamp,
+
+  headline:
+    risk.headline,
+
+  narrative:
+    forecast.narrative,
+
+  risk:
+    risk.globalRisk
+});
+
+console.log(
+  "Memory Saved"
 );
 
 const trend =
@@ -32,16 +68,15 @@ await publishArcEvent({
   change: trend.change,
 
   headline: risk.headline,
-
   category: risk.reason,
 
-  confidence:
-    risk.confidence,
+  confidence: risk.confidence,
 
   tags: risk.tags,
 
-  topEvents:
-    risk.topEvents
+  topEvents: risk.topEvents,
+
+  forecast
 });
 
 console.log(

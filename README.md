@@ -53,23 +53,47 @@ The agent converts global events into structured intelligence that can be consum
 
 ---
 
-## Intelligence Pipeline
+## Architecture
 
-News Sources
-↓
-Collectors
-↓
-Event Classification
-↓
-Risk Scoring Engine
-↓
-Global Risk Engine
-↓
-Historical Trend Analysis
-↓
-ARC Event Publishing
-↓
-Alert Distribution
+```mermaid
+flowchart TD
+
+A[Global News Sources]
+--> B[RSS Collectors]
+
+B
+--> C[Headline Scoring Engine]
+
+C
+--> D[GeoMacro Risk Engine]
+
+D
+--> E[Historical Trend Analysis]
+
+E
+--> F[ARC Event Publisher]
+
+E
+--> G[Telegram Alert System]
+
+F
+--> H[ARC Testnet]
+
+G
+--> I[Human Operators]
+
+D
+--> J[Rare Earth Risk]
+
+D
+--> K[Energy Risk]
+
+D
+--> L[Shipping Risk]
+
+D
+--> M[Sanctions Risk]
+```
 
 ---
 
@@ -99,6 +123,13 @@ Confidence:
 100%
 
 ---
+## Why It Matters
+
+Most markets react to geopolitical events only after narratives become widely visible.
+
+GeoMacro Oracle attempts to identify risk signals earlier by continuously monitoring conflicts, sanctions, energy disruptions, shipping bottlenecks and strategic supply chains.
+
+The objective is to convert geopolitical complexity into structured machine-readable intelligence that autonomous systems can act upon.
 
 ## Vision
 
@@ -142,5 +173,34 @@ npm run watcher
 Agent ID: 39369
 
 Project: GeoMacro Oracle
+
+## Roadmap
+
+### Phase 1 — Intelligence Collection
+- [x] Multi-source news ingestion
+- [x] Event classification
+- [x] Global risk scoring
+- [x] ARC event publishing
+- [x] Telegram alerts
+
+### Phase 2 — Intelligence Memory
+- [x] Historical trend tracking
+- [ ] Regime-shift detection
+- [ ] Narrative persistence
+
+### Phase 3 — Forecasting
+- [ ] Escalation probability engine
+- [ ] Geopolitical scenario generation
+- [ ] Strategic risk forecasting
+
+### Phase 4 — Prediction Markets
+- [ ] Geopolitical market creation
+- [ ] Event probability pricing
+- [ ] Market settlement logic
+
+### Phase 5 — Autonomous Intelligence Network
+- [ ] Multi-agent forecasting
+- [ ] Agent reputation layer
+- [ ] Onchain geopolitical intelligence economy
 
 Built for ARC Testnet.

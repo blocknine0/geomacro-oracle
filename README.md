@@ -6,9 +6,9 @@
 
 **ARC Agent ID:** 39369
 
-GeoMacro Oracle is an autonomous geopolitical intelligence agent designed to transform real-world events into machine-readable risk signals.
+GeoMacro Oracle is an autonomous geopolitical intelligence agent designed to transform real world events into machine readable risk signals.
 
-Built for ARC Testnet, the system continuously monitors geopolitical conflicts, sanctions, energy markets, shipping disruptions, and strategic supply chains to identify emerging global risks before they propagate through markets.
+Built for ARC Testnet, the system continuously monitors geopolitical conflicts, sanctions, energy markets, shipping disruptions and strategic supply chains to identify emerging global risks before they propagate through markets.
 
 ---
 

@@ -1,5 +1,9 @@
 # GeoMacro Oracle
 
+![License](https://img.shields.io/badge/license-MIT-green)
+![ARC](https://img.shields.io/badge/ARC-Agent%20%2339369-blue)
+![Status](https://img.shields.io/badge/status-active-brightgreen)
+
 **ARC Agent ID:** 39369
 
 GeoMacro Oracle is an autonomous geopolitical intelligence agent designed to transform real-world events into machine-readable risk signals.

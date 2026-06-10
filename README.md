@@ -6,6 +6,8 @@
 
 **ARC Agent ID:** 39369
 
+### From Real-World Events to Machine-Readable Intelligence
+
 GeoMacro Oracle is an autonomous geopolitical intelligence agent designed to transform real world events into machine readable risk signals.
 
 Built for ARC Testnet, the system continuously monitors geopolitical conflicts, sanctions, energy markets, shipping disruptions and strategic supply chains to identify emerging global risks before they propagate through markets.
@@ -55,6 +57,29 @@ The agent converts global events into structured intelligence that can be consum
 * Telegram intelligence alerts
 * Continuous monitoring mode
 
+### Forecasting Layer
+
+* Narrative Detection Engine
+* Narrative State Engine
+* Scenario Generation
+* Escalation Forecasting
+* Strategic Risk Forecasting
+
+### Intelligence Memory
+
+* Narrative Memory
+* Event Chain Tracking
+* Historical Risk Memory
+* Knowledge Graph Construction
+
+### Prediction Markets
+
+* Automated Market Generation
+* Escalation Probability Markets
+* Energy Shock Markets
+* Shipping Disruption Markets
+* Sanctions Forecast Markets
+
 ---
 
 ## Architecture
@@ -62,44 +87,67 @@ The agent converts global events into structured intelligence that can be consum
 ```mermaid
 flowchart TD
 
-A[Global News Sources]
---> B[RSS Collectors]
+A[Real World Events]
+--> B[News Intelligence Layer]
 
 B
---> C[Headline Scoring Engine]
+--> C[GeoMacro Risk Engine]
 
 C
---> D[GeoMacro Risk Engine]
+--> D[Narrative Engine]
 
 D
---> E[Historical Trend Analysis]
+--> E[Memory Layer]
 
 E
---> F[ARC Event Publisher]
-
-E
---> G[Telegram Alert System]
+--> F[Forecast Engine]
 
 F
---> H[ARC Testnet]
+--> G[Scenario Forecasting]
 
 G
---> I[Human Operators]
+--> H[Prediction Markets]
 
-D
---> J[Rare Earth Risk]
+H
+--> I[ARC Publishing]
 
-D
---> K[Energy Risk]
+I
+--> J[ARC Testnet]
 
-D
---> L[Shipping Risk]
+F
+--> K[Escalation Forecasts]
 
-D
---> M[Sanctions Risk]
+F
+--> L[Energy Shock Forecasts]
+
+F
+--> M[Shipping Risk Forecasts]
+
+E
+--> N[Knowledge Graph]
+
+E
+--> O[Event Chains]
+
+E
+--> P[Narrative Memory]
 ```
 
----
+### Intelligence Flow
+
+```text
+Real World Events
+        ↓
+GeoMacro Oracle
+        ↓
+Forecast Layer
+        ↓
+Prediction Markets
+        ↓
+ARC Agents
+        ↓
+Onchain Capital Allocation
+```
 
 ## Data Sources
 
@@ -112,28 +160,46 @@ D
 
 ## Example Output
 
-Global Risk: 60
-
-Headline:
-Israel strikes Beirut suburb days after US-brokered truce
-
-Trend:
-Stable
-
-Drivers:
-military_action, middle_east
-
-Confidence:
-100%
-
----
+```json
+{
+  "globalRisk": 59,
+  "headline": "Iran and Israel say they will pause strikes but warn of retaliation if ceasefire breached again",
+  "narrative": "Iran-Israel Escalation",
+  "stage": "Fragile Ceasefire",
+  "escalationProbability": 70,
+  "energyShockProbability": 25,
+  "trend": "Stable",
+  "confidence": 85
+}
+```
 ## Why It Matters
 
-Most markets react to geopolitical events only after narratives become widely visible.
+Markets do not move because news exists.
 
-GeoMacro Oracle attempts to identify risk signals earlier by continuously monitoring conflicts, sanctions, energy disruptions, shipping bottlenecks and strategic supply chains.
+Markets move because narratives, risks and expectations change.
 
-The objective is to convert geopolitical complexity into structured machine-readable intelligence that autonomous systems can act upon.
+Most geopolitical monitoring systems describe events after they become obvious.
+
+GeoMacro Oracle attempts to identify emerging geopolitical risk before it becomes fully priced into markets.
+
+By continuously monitoring conflicts, sanctions, energy disruptions, shipping bottlenecks and strategic supply chains, the system transforms geopolitical complexity into machine-readable intelligence that autonomous agents, prediction markets and onchain systems can act upon.
+
+
+## What Makes GeoMacro Oracle Different
+
+Most geopolitical monitoring systems describe what happened.
+
+GeoMacro Oracle attempts to estimate:
+
+* What happens next
+* How likely it is
+* Which geopolitical narrative is forming
+* Which strategic regime is emerging
+* Which prediction markets should exist
+
+The objective is not information delivery.
+
+The objective is machine-readable geopolitical intelligence.
 
 ## Vision
 
@@ -149,6 +215,22 @@ Future versions will:
 * Power autonomous risk economies
 
 The long-term objective is to build an Autonomous Geopolitical Intelligence Layer for Web3.
+
+## End State
+
+```text
+Real World Events
+        ↓
+GeoMacro Oracle
+        ↓
+Forecast Layer
+        ↓
+Prediction Markets
+        ↓
+ARC Agents
+        ↓
+Onchain Capital Allocation
+```
 
 ---
 
@@ -189,16 +271,19 @@ Project: GeoMacro Oracle
 
 ### Phase 2 — Intelligence Memory
 - [x] Historical trend tracking
-- [ ] Regime-shift detection
-- [ ] Narrative persistence
+- [x] Narrative persistence
+- [x] Event memory
+- [x] Knowledge graph
 
 ### Phase 3 — Forecasting
-- [ ] Escalation probability engine
-- [ ] Geopolitical scenario generation
-- [ ] Strategic risk forecasting
+- [x] Escalation probability engine
+- [x] Geopolitical scenario generation
+- [x] Strategic risk forecasting
+- [ ] Forecast accuracy engine
+- [ ] Multi-scenario forecasting
 
 ### Phase 4 — Prediction Markets
-- [ ] Geopolitical market creation
+- [x] Geopolitical market creation
 - [ ] Event probability pricing
 - [ ] Market settlement logic
 

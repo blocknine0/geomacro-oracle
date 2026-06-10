@@ -4,6 +4,11 @@ import {
 from "./escalation.js";
 
 import {
+  detectRegime
+}
+from "../states/regime-engine.js";
+
+import {
   getSanctionsProbability
 }
 from "./sanctions.js";
@@ -12,6 +17,11 @@ import {
   detectNarrativeState
 }
 from "../states/narrative-state.js";
+
+import {
+  getNarrativeMomentum
+}
+from "../memory/narrative-memory.js";
 
 import {
   getShippingDisruptionProbability
@@ -42,27 +52,45 @@ const state =
       risk.headline
     );
 
+const momentum =
+  getNarrativeMomentum(
+    narrative.narrative
+  );
+
+const regime =
+  detectRegime(
+    risk.globalRisk,
+    momentum
+  );
+
+console.log(
+  "Narrative Momentum:",
+  momentum
+);
+
   return {
 
   narrative:
     narrative.narrative,
 
   stage:
-    state.stage,
+  regime,
 
   escalationProbability:
 
-    Math.min(
-      95,
+  Math.min(
+    95,
 
-      getEscalationProbability(
-        risk.globalRisk
-      ) +
+    getEscalationProbability(
+      risk.globalRisk
+    ) +
 
-      narrative.escalationBonus +
+    narrative.escalationBonus +
 
-      state.escalationBonus
-    ),
+    state.escalationBonus +
+
+    (momentum * 3)
+  ),
 
   sanctionsProbability:
 

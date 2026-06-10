@@ -6,6 +6,31 @@ import { generateGlobalRisk } from "./signals/global-risk.js";
 import { sendTelegramAlert } from "./alerts/telegram.js";
 import { shouldSendAlert } from "./alerts/alert-guard.js";
 import {
+  buildReasoning
+}
+from "./forecasts/reasoning-engine.js";
+import {
+  savePrediction,
+  getAccuracy
+}
+from "./forecasts/accuracy-engine.js";
+import {
+  buildKnowledgeGraph
+}
+from "./graph/knowledge-graph.js";
+import {
+  buildEventChain
+}
+from "./chains/event-chain.js";
+import {
+  buildScenario
+}
+from "./forecasts/scenario-engine.js";
+import {
+  buildMarkets
+}
+from "./markets/market-builder.js";
+import {
   saveEvent
 }
 from "./memory/event-memory.js";
@@ -31,10 +56,93 @@ await saveRisk(
 const forecast =
   buildForecast(risk);
 
+await savePrediction({
+
+  timestamp:
+    risk.timestamp,
+
+  headline:
+    risk.headline,
+
+  narrative:
+    forecast.narrative,
+
+  probability:
+    forecast.escalationProbability,
+
+  stage:
+    forecast.stage
+});
+
+const graph =
+  buildKnowledgeGraph(
+    risk.headline
+  );
+
+console.log(
+  "Knowledge Graph:",
+  graph
+);
+
+const scenario =
+  buildScenario(
+    forecast
+  );
+
+const reasoning =
+  buildReasoning(
+    risk,
+    forecast
+  );
+
+console.log(
+  "Reasoning:",
+  reasoning
+);
+
+const accuracy =
+  await getAccuracy();
+
+console.log(
+  "Accuracy:",
+  accuracy
+);
+
+const chain =
+  buildEventChain(
+    risk.headline
+  );
+
+console.log(
+  "Event Chain:",
+  chain
+);
+
+console.log(
+  "Scenario:",
+  scenario
+);
+
+const markets =
+  buildMarkets(
+    risk,
+    forecast
+  );
+
 console.log(
   "Forecast:",
   forecast
 );
+
+console.log(
+  "Markets:",
+  JSON.stringify(
+    markets,
+    null,
+    2
+  )
+);
+
 
 await saveEvent({
 
@@ -68,6 +176,7 @@ await publishArcEvent({
   change: trend.change,
 
   headline: risk.headline,
+
   category: risk.reason,
 
   confidence: risk.confidence,
@@ -76,7 +185,11 @@ await publishArcEvent({
 
   topEvents: risk.topEvents,
 
-  forecast
+forecast,
+scenario,
+graph,
+accuracy,
+reasoning
 });
 
 console.log(
@@ -133,11 +246,59 @@ Energy: ${risk.energyRisk}
 Shipping: ${risk.shippingRisk}
 Sanctions: ${risk.sanctionsRisk}
 
+Forecast Narrative:
+${forecast.narrative}
+
+Forecast Stage:
+${forecast.stage}
+
+Escalation Probability:
+${forecast.escalationProbability}%
+
+Scenario:
+${scenario.scenario}
+
+Expected Outcome:
+${scenario.expectedOutcome}
+
+Scenario Confidence:
+${scenario.confidence}%
+
+Reasoning:
+
+${reasoning.join("\n")}
+
+Forecast Accuracy:
+${accuracy.accuracy}%
+
+Resolved Forecasts:
+${accuracy.total}
+
+Knowledge Nodes:
+${graph.nodes.join(", ")}
+
+Second Order Effects:
+${graph.impacts.join(", ")}
+
+Event Chain:
+
+${chain.join(" -> ")}
+
+Prediction Markets:
+
+${markets
+  .map(
+    m =>
+`${m.market}
+Probability: ${m.probability}%`
+  )
+  .join("\n\n")}
+
 Agent ID: ${risk.agentId}`
 );
 
 
-    console.log("Alert Triggered");
+   console.log("Alert Triggered");
   } else {
   console.log("No Alert");
 }

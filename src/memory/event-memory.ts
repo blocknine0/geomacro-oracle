@@ -30,6 +30,22 @@ export async function saveEvent(
     events = [];
   }
 
+  const exists =
+    events.find(
+      (e: any) =>
+        e.headline ===
+        event.headline
+    );
+
+  if (exists) {
+
+    console.log(
+      "Duplicate Event"
+    );
+
+    return;
+  }
+
   events.unshift(event);
 
   await fs.writeFile(

@@ -10,4 +10,10 @@ data/state/last-alert.json
 
 data/state/history.json
 
+data/memory/
+
+data/forecasts/
+
+data/arc-events.json
+
 *.log

@@ -1,51 +1,74 @@
 export function detectNarrative(
   headline: string
 ) {
-
-  const text =
+  const h =
     headline.toLowerCase();
 
   if (
-    text.includes("iran") &&
-    text.includes("israel")
+    h.includes("iran") &&
+    h.includes("israel")
   ) {
-
     return {
       narrative:
         "Iran-Israel Escalation",
 
-      escalationBonus: 35
+      escalationBonus: 15
     };
   }
 
   if (
-    text.includes("china") &&
-    text.includes("taiwan")
+    h.includes("iran") &&
+    (
+      h.includes("us") ||
+      h.includes("american")
+    )
   ) {
-
     return {
       narrative:
-        "Taiwan Strait Tension",
+        "US-Iran Military Escalation",
 
       escalationBonus: 30
     };
   }
 
   if (
-    text.includes("russia") ||
-    text.includes("ukraine")
+    h.includes("hormuz")
   ) {
-
     return {
       narrative:
-        "Russia-Ukraine War",
+        "Strait of Hormuz Risk",
+
+      escalationBonus: 35
+    };
+  }
+
+  if (
+    h.includes("sanction")
+  ) {
+    return {
+      narrative:
+        "Sanctions Escalation",
+
+      escalationBonus: 20
+    };
+  }
+
+  if (
+    h.includes("oil") ||
+    h.includes("energy")
+  ) {
+    return {
+      narrative:
+        "Energy Shock Risk",
 
       escalationBonus: 25
     };
   }
 
   return {
-    narrative: "General",
+    narrative:
+      "General",
+
     escalationBonus: 0
   };
 }

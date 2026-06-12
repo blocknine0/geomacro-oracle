@@ -5,67 +5,96 @@ export async function shouldSendAlert(
   currentHeadline: string
 ): Promise<boolean> {
 
-  const raw = await fs.readFile(
-  "data/state/last-alert.json",
-  "utf-8"
-);
+  const file =
+    "data/state/last-alert.json";
 
-const state = JSON.parse(
-  raw.replace(/^\uFEFF/, "")
-);
+  let state: any = {};
 
-  const lastRisk = state.lastRisk ?? 0;
-  const lastHeadline =
-  state.lastHeadline ?? "";
+  try {
 
-  const diff =
-  Math.abs(currentRisk - lastRisk);
-  const headlineChanged =
-  currentHeadline !== lastHeadline;
+    const raw =
+      await fs.readFile(
+        file,
+        "utf-8"
+      );
 
-console.log(
-  `HeadlineChanged=${headlineChanged}`
-);
-console.log(
-  `Current=${currentRisk}, Last=${lastRisk}, Diff=${diff}`
-);
+    state =
+      JSON.parse(
+        raw.replace(
+          /^\uFEFF/,
+          ""
+        )
+      );
 
-if (currentRisk < 75) {
-  console.log(
-    "Blocked: Risk below threshold"
-  );
-}
+  } catch {
 
-if (
-  diff < 5 &&
-  !headlineChanged
-) {
-  console.log(
-    "Blocked: Change too small"
-  );
-}
-
-if (
-  currentRisk >= 75 &&
-  (
-    diff >= 5 ||
-    headlineChanged
-  )
-) {
-    await fs.writeFile(
-  "data/state/last-alert.json",
-  JSON.stringify(
-    {
-      lastRisk: currentRisk,
-      lastHeadline: currentHeadline
-    },
-    null,
-    2
-  )
-);
-
-    return true;
+    state = {};
   }
 
-  return false;
+  const lastRisk =
+    state.lastRisk ?? 0;
+
+  const lastHeadline =
+    state.lastHeadline ?? "";
+
+  const diff =
+    Math.abs(
+      currentRisk -
+      lastRisk
+    );
+
+  const headlineChanged =
+    currentHeadline !==
+    lastHeadline;
+
+  console.log(
+    `HeadlineChanged=${headlineChanged}`
+  );
+
+  console.log(
+    `Current=${currentRisk}, Last=${lastRisk}, Diff=${diff}`
+  );
+
+  const shouldAlert =
+
+    (
+      currentRisk >= 60
+      &&
+      (
+        diff >= 5 ||
+        headlineChanged
+      )
+    )
+
+    ||
+
+    (
+      currentRisk >= 80
+    );
+
+  if (!shouldAlert) {
+
+    console.log(
+      "Blocked: Alert conditions not met"
+    );
+
+    return false;
+  }
+
+  await fs.writeFile(
+    file,
+    JSON.stringify(
+      {
+        lastRisk:
+          currentRisk,
+
+        lastHeadline:
+          currentHeadline
+      },
+      null,
+      2
+    )
+  );
+
+  return true;
 }

@@ -3,12 +3,13 @@ import fs from "fs";
 export function getNarrativeMomentum(
   narrative: string
 ) {
+
   try {
 
     const raw =
       fs.readFileSync(
         "data/memory/events.json",
-        "utf-8"
+        "utf8"
       );
 
     const events =
@@ -21,7 +22,10 @@ export function getNarrativeMomentum(
           narrative
       );
 
-    return matching.length;
+    return Math.min(
+      100,
+      matching.length * 5
+    );
 
   } catch {
 

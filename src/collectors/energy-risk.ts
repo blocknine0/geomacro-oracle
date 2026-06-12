@@ -4,20 +4,41 @@ export function getEnergyRisk(
 
   let score = 0;
 
+  const keywords = [
+
+    "oil",
+    "crude",
+    "brent",
+    "gas",
+    "natural gas",
+    "lng",
+    "fuel",
+    "diesel",
+    "petroleum",
+    "energy",
+    "energy market",
+    "refinery",
+    "opec",
+    "pipeline",
+    "tanker"
+  ];
+
   for (const item of articles) {
 
     const text =
-      (item.title ?? "")
-        .toLowerCase();
+      `${item.title ?? ""} ${
+        item.description ?? ""
+      }`
+      .toLowerCase();
 
-    if (
-      text.includes("oil") ||
-      text.includes("gas") ||
-      text.includes("lng") ||
-      text.includes("opec") ||
-      text.includes("pipeline")
-    ) {
-      score += 5;
+    for (const word of keywords) {
+
+      if (
+        text.includes(word)
+      ) {
+
+        score += 5;
+      }
     }
   }
 

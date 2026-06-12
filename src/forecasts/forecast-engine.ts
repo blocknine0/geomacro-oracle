@@ -42,15 +42,23 @@ export function buildForecast(
   risk: any
 ) {
 
+const narrativeText =
+  risk.topEvents
+    .map(
+      (e: any) =>
+        e.headline
+    )
+    .join(" ");
+
 const state =
   detectNarrativeState(
-    risk.headline
+    narrativeText
   );
 
-  const narrative =
-    detectNarrative(
-      risk.headline
-    );
+const narrative =
+  detectNarrative(
+    narrativeText
+  );
 
 const momentum =
   getNarrativeMomentum(
@@ -74,23 +82,26 @@ console.log(
     narrative.narrative,
 
   stage:
-  regime,
+  state.stage,
+
+  regime:
+    regime,
 
   escalationProbability:
 
-  Math.min(
-    95,
+Math.min(
+  95,
 
-    getEscalationProbability(
-      risk.globalRisk
-    ) +
+  getEscalationProbability(
+  risk.globalRisk
+) +
 
-    narrative.escalationBonus +
+state.escalationBonus +
 
-    state.escalationBonus +
-
-    (momentum * 3)
-  ),
+  Math.floor(
+    momentum / 4
+  )
+),
 
   sanctionsProbability:
 

@@ -4,19 +4,58 @@ export function getSanctionsRisk(
 
   let score = 0;
 
+  const keywords = [
+
+    "sanction",
+    "sanctions",
+
+    "tariff",
+    "trade war",
+
+    "export ban",
+    "export restrictions",
+
+    "secondary sanctions",
+
+    "embargo",
+
+    "blacklist",
+
+    "asset freeze",
+
+    "price cap",
+
+    "economic restrictions",
+
+    "trade restrictions",
+
+    "export controls",
+
+    "technology restrictions",
+
+    "financial restrictions",
+
+    "swift",
+
+    "frozen assets"
+  ];
+
   for (const item of articles) {
 
     const text =
-      (item.title ?? "")
-        .toLowerCase();
+      `${item.title ?? ""} ${
+        item.description ?? ""
+      }`
+      .toLowerCase();
 
-    if (
-      text.includes("sanction") ||
-      text.includes("tariff") ||
-      text.includes("trade war") ||
-      text.includes("export ban")
-    ) {
-      score += 15;
+    for (const keyword of keywords) {
+
+      if (
+        text.includes(keyword)
+      ) {
+
+        score += 8;
+      }
     }
   }
 

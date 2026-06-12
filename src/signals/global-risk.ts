@@ -15,11 +15,13 @@ from "../scoring/headline-score.js";
 
 export async function generateGlobalRisk() {
 
-  const rareEarthRisk =
-    await getRareEarthRisk();
-
   const articles =
-    await getLiveNews();
+  await getLiveNews();
+
+const rareEarthRisk =
+  await getRareEarthRisk(
+    articles
+  );
 
   const energyRisk =
     getEnergyRisk(articles);
@@ -108,18 +110,41 @@ console.log(
   sanctionsRisk
 );
 
-  const globalRisk =
-    Math.min(
-      100,
-      Math.round(
-        (
-          rareEarthRisk +
-          energyRisk +
-          shippingRisk +
-          sanctionsRisk
-        ) / 4
-      ) + bestScore
-    );
+  const geopoliticalRisk =
+Math.min(
+  100,
+
+  Math.round(
+
+    bestScore * 1.8 +
+
+    topEvents.length * 8
+  )
+);
+
+const supplyChainRisk =
+Math.round(
+  rareEarthRisk * 0.8
+);
+
+const marketStressRisk =
+Math.round(
+  (
+    energyRisk * 0.5 +
+    shippingRisk * 0.3 +
+    sanctionsRisk * 0.2
+  )
+);
+
+const globalRisk =
+Math.min(
+  100,
+  Math.round(
+    geopoliticalRisk * 0.5 +
+    marketStressRisk * 0.3 +
+    supplyChainRisk * 0.2
+  )
+);
 
   return {
 
@@ -148,11 +173,13 @@ console.log(
       bestCategory,
 
     confidence:
-      80 +
-      Math.min(
-        bestScore,
-        20
-      ),
+Math.min(
+  95,
+  60 +
+  Math.floor(
+    bestScore
+  )
+),
 
     tags:
       bestTags,

@@ -6,39 +6,50 @@ export function buildReasoning(
   const reasons: string[] = [];
 
   if (
-    risk.globalRisk >= 70
+    risk.tags?.includes(
+      "military_action"
+    )
   ) {
+
     reasons.push(
-      "Global risk above critical threshold"
+      "Military escalation detected"
     );
   }
 
   if (
-    risk.headline
-      .toLowerCase()
-      .includes("iran")
+    risk.shippingRisk > 15
   ) {
+
     reasons.push(
-      "Iran-related escalation detected"
+      "Shipping disruption risk elevated"
     );
   }
 
   if (
-    risk.headline
-      .toLowerCase()
-      .includes("hormuz")
+    risk.energyRisk > 5
   ) {
+
     reasons.push(
-      "Hormuz chokepoint risk active"
+      "Energy market stress increasing"
     );
   }
 
   if (
-    forecast.stage ===
-    "Active Conflict"
+    forecast.narrative !==
+    "General"
   ) {
+
     reasons.push(
-      "Conflict stage elevated"
+      `Narrative active: ${forecast.narrative}`
+    );
+  }
+
+  if (
+    forecast.escalationProbability >= 60
+  ) {
+
+    reasons.push(
+      "Escalation probability above threshold"
     );
   }
 

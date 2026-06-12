@@ -6,6 +6,23 @@ import { generateGlobalRisk } from "./signals/global-risk.js";
 import { sendTelegramAlert } from "./alerts/telegram.js";
 import { shouldSendAlert } from "./alerts/alert-guard.js";
 import {
+  resolvePredictions
+}
+from "./forecasts/resolver.js";
+import {
+  resolveForecasts
+}
+from "./resolution/resolve-forecasts.js";
+import {
+  getSecurityScore
+}
+from "./security/security-engine.js";
+
+import {
+  buildSecurityReport
+}
+from "./security/security-report.js";
+import {
   buildReasoning
 }
 from "./forecasts/reasoning-engine.js";
@@ -47,7 +64,13 @@ from "./history/risk-history.js";
 
 
 async function main() {
-  const risk = await generateGlobalRisk();
+await resolveForecasts();
+  const risk =
+    await generateGlobalRisk();
+
+  await resolvePredictions();
+
+  
 
 await saveRisk(
   risk.globalRisk
@@ -73,6 +96,19 @@ await savePrediction({
   stage:
     forecast.stage
 });
+
+const security =
+  await getSecurityScore();
+
+const securityReport =
+  buildSecurityReport(
+    security
+  );
+
+console.log(
+  "Security:",
+  securityReport
+);
 
 const graph =
   buildKnowledgeGraph(
@@ -169,27 +205,22 @@ const trend =
 await publishArcEvent({
   agentId: risk.agentId,
   timestamp: risk.timestamp,
-
   risk: risk.globalRisk,
-
   trend: trend.trend,
   change: trend.change,
-
   headline: risk.headline,
-
   category: risk.reason,
-
   confidence: risk.confidence,
-
   tags: risk.tags,
-
   topEvents: risk.topEvents,
 
-forecast,
-scenario,
-graph,
-accuracy,
-reasoning
+  forecast,
+  scenario,
+  graph,
+  accuracy,
+  reasoning,
+  markets,
+  security: securityReport
 });
 
 console.log(
@@ -293,6 +324,21 @@ ${markets
 Probability: ${m.probability}%`
   )
   .join("\n\n")}
+
+Security Score:
+${security.score}
+
+Critical:
+${security.critical}
+
+High:
+${security.high}
+
+Medium:
+${security.medium}
+
+Recommendation:
+${security.recommendation}
 
 Agent ID: ${risk.agentId}`
 );

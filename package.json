@@ -4,10 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-  "start": "tsx src/index.ts",
-  "watcher": "tsx src/watcher.ts",
-  "feeds": "tsx src/test-feeds.ts"
-},
+    "start": "tsx src/index.ts",
+    "watcher": "tsx src/watcher.ts",
+    "feeds": "tsx src/test-feeds.ts"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",

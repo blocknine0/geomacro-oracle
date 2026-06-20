@@ -1,125 +1,115 @@
-# Geomacro — Onchain Geopolitical Risk Oracle on Arc
+<div align="center">
 
-Geomacro is an AI-driven oracle that classifies live geopolitical and macro
-news, runs multi-agent debate to produce probabilistic verdicts, and
-publishes attested events onchain to the [Arc Network](https://arc.network)
-(USDC-gas L1 by Circle).
+# Geomacro
 
-- **Live preview:** https://geomacrooracle.lovable.app
-- **Stack:** TanStack Start (React 19 + Vite 7) on Cloudflare Workers,
-  Tailwind v4, shadcn/ui, TanStack Query, viem for wallet/RPC, NewsAPI
-  for live news search, Groq (llama-3.3-70b-versatile) for Live Feed
-  classification, Lovable AI Gateway for the Oracle / Arena agents.
-- **Networks:** Arc Testnet (chainId `0x4cef52` / `5042002`), with
-  mainnet auto-promotion ready (`src/lib/arc.ts`).
+### Onchain geopolitical risk intelligence, settled in USDC, on Arc.
+
+[![Live App](https://img.shields.io/badge/Live-geomacrooracle.lovable.app-FF6B00?style=for-the-badge)](https://geomacrooracle.lovable.app)
+[![Arc Testnet](https://img.shields.io/badge/Arc-Testnet-1E90FF?style=for-the-badge)](https://testnet.arcscan.app/address/0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D)
+[![Contract Verified](https://img.shields.io/badge/Contract-Verified-success?style=for-the-badge)](https://testnet.arcscan.app/address/0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D)
+
+</div>
 
 ---
 
-## What it does
+Geomacro watches the news, scores the risk, and lets two AI agents argue about where things are headed. Real money sits behind it, and everything settles onchain.
 
-1. **Live news ingest** — NewsAPI live search pulls geopolitics /
-   rare-earth / macro / crypto headlines from the last 48h on a fixed
-   cadence. Results are sanitized server-side (no internal IDs leak —
-   enforced by `src/__tests__/live-feed-no-ids.test.ts`).
-2. **AI classification** — each item is scored for severity, stage,
-   confidence and 24h delta by Groq (`llama-3.3-70b-versatile`). Off-topic
-   articles are rejected and never persisted.
-3. **Agent duel** — two opposing agents argue each market; a main-agent
-   judge issues a probabilistic verdict with rationale.
-4. **Onchain publish** — verdicts are written as attestation events to
-   the connected Arc network through the user's wallet. USDC is the
-   native gas token (18 decimals onchain).
-5. **Wallet feed** — recent attestations and tx hashes are surfaced
-   with explorer deep-links.
+> **Contract:** `0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D`
 
-## Repository layout
+## What this is
+
+Most "AI news" tools just summarize headlines and stop there. I wanted something that actually *does* something with the read. So Geomacro pulls live geopolitical, macro, rare-earth, and crypto news, scores each story for severity and confidence, and once something crosses a threshold it opens a market automatically. No human has to notice the news and decide to act on it. The pipeline handles that part.
+
+From there, two agents take opposite sides:
+
+| | Predicts | |
+|:---:|:---|:---:|
+| 🦅 **Agent Hawk** | risk *escalates*, severity rising, ceasefires breaking | |
+| 🕊️ **Agent Dove** | risk *cools*, de-escalation, mediation, ceasefires holding | |
+
+Anyone can stake real USDC on Arc Testnet behind whichever side they think is right. When the outcome's clear, the market resolves and winners claim their payout straight from the contract.
+
+**Nothing here is a mockup.** The contract is deployed and verified. The ingest pipeline runs on a public schedule you can go check right now. The whole stake, resolve, and claim loop has been tested onchain with real transactions.
+
+## How it fits together
 
 ```
-src/
-  routes/
-    __root.tsx                 Root layout, head defaults, error + 404 boundaries
-    index.tsx                  Landing + oracle UI
-  components/
-    autonomous-oracle.tsx      Agent debate + verdict view
-    live-news-feed.tsx         Sanitized news feed
-    wallet-tx-feed.tsx         Recent attestations on Arc
-    ui/                        shadcn primitives
-  lib/
-    arc.ts                     Arc network config (testnet + mainnet)
-    agents.ts / agents.functions.ts        Agent duel (server fn)
-    arena-judge.functions.ts   Main-agent judge (server fn)
-    autonomous-agent.functions.ts          Autonomous loop
-    live-feed.functions.ts     News feed RPC + caching
-    live-feed.sanitize.ts      Strips internal IDs before client return
-    newsapi.server.ts          NewsAPI live search (server-only)
-    groq.server.ts             Groq JSON classifier (server-only)
-    ai-gateway.server.ts       Lovable AI Gateway client (server-only)
-    balance.ts                 USDC-on-Arc balance formatting
-    wallet-tx.ts               Session tx memory
-    attestation.ts             Onchain attestation payload builder
-    config.server.ts           Server config reader
-  hooks/
-    use-wallet.ts              EIP-1193 wallet + Arc chain switch
-  __tests__/
-    live-feed-no-ids.test.ts   Guarantees client/API output has no internal IDs
-public/
-  robots.txt, sitemap.xml
+NewsAPI  →  Groq (llama-3.3-70b)  →  Supabase  →  Live Feed
+                                          │
+                                          ▼
+                          GitHub Actions, every 30 min
+                                          │
+                                          ▼
+                        AgentArena.sol on Arc Testnet
+                    createMarket → stake → declareWinner → claim
 ```
 
-Server-only files end in `.server.ts`; client-callable RPC files end in
-`.functions.ts` and are invoked via `useServerFn(...)` from TanStack
-Start. Never import a `.server.ts` from a component.
+A few notes on each piece:
 
-## Environment variables
+🔍 **Ingestion.** NewsAPI pulls fresh articles across four categories on a loop. Nothing fancy, just polling.
 
-See `.env.example`. Public values are prefixed `VITE_` and ship to the
-browser; everything else is server-only.
+🧠 **Classification.** Groq scores each article for severity, confidence, and relevance. This part took a few iterations to get right. Early on it was letting through celebrity gossip and exam results tagged as "macro," so there's now a fairly strict relevance gate before anything reaches the feed.
 
-| Name | Scope | Purpose |
-| --- | --- | --- |
-| `LOVABLE_API_KEY` | server | Lovable AI Gateway (managed; rotate via Lovable) |
-| `NEWSAPI_KEY` | server | Live Feed ingest (newsapi.org) |
-| `GROQ_API_KEY` | server | Live Feed classifier (llama-3.3-70b-versatile) |
-| `APP_SUPABASE_URL` / `APP_SUPABASE_ANON_KEY` | server | Persist classified events |
-| `VITE_ARC_NETWORK` | public | Force `mainnet` or `testnet` (default: auto) |
+🗄️ **Storage.** Supabase holds the event log. The frontend reads straight from it.
 
-## Local development
+⚙️ **Market automation.** A scheduled GitHub Action checks for high-severity events that don't have a market yet and opens one on Arc directly. No manual step. You can see the actual run logs in the [Actions tab](../../actions) of this repo.
+
+💰 **Settlement.** `AgentArena.sol` holds staked USDC until a market resolves, then pays out proportionally to whoever backed the winning side.
+
+## The contract
+
+Kept this intentionally small. No governance token, no oracle network, no multisig. Just enough to prove the settlement loop actually works end to end before adding more moving parts:
+
+```solidity
+createMarket(marketId)          // owner opens a market
+stake(marketId, side) payable   // anyone backs HAWK or DOVE with USDC
+declareWinner(marketId, side)   // owner resolves once the outcome is clear
+claim(marketId)                 // winners withdraw their share
+```
+
+USDC is Arc's native gas token, so staking is just a payable call. No approve step, no ERC-20 friction to deal with.
+
+**One honest tradeoff worth calling out:** resolution right now is owner-attested rather than dispute-based like UMA. For a market that settles in hours, not days, a full dispute window adds latency without buying much trust at this stage of the project. Decentralizing that is the obvious next step. It's on the roadmap below, not pretending to be solved already.
+
+## Repo layout
+
+```
+src/                          Frontend — Live Feed, Agent Arena, wallet connection
+scripts/create-markets.js     Checks Supabase for new high-severity events,
+                               opens markets onchain automatically
+.github/workflows/
+  auto-create-markets.yml     Runs the script above every 30 minutes
+```
+
+## Running it locally
 
 ```bash
+git clone https://github.com/blocknine0/geomacro-oracle.git
+cd geomacro-oracle
 bun install
-cp .env.example .env       # fill in keys
-bun run dev                # http://localhost:8080
-bun run lint
-bunx vitest run            # runs the no-internal-IDs test
-bun run build              # production build (Cloudflare Worker target)
+bun run dev
 ```
 
-## Security posture
+You'll need your own `NEWSAPI_KEY`, `GROQ_API_KEY`, and a Supabase project. See `.env.example`.
 
-- No private keys server-side. All onchain writes are signed by the
-  user's wallet (EIP-1193).
-- Server functions read secrets inside `.handler()` only — never at
-  module scope.
-- News-feed sanitizer removes internal cache/event identifiers before
-  any response leaves the server; a vitest unit test enforces this.
-- `Publish to Arc` admin action is hidden in the public UI.
-- Error boundaries (`__root.tsx`) catch and report runtime errors
-  without leaking stack traces to end users.
+## Roadmap
 
-## License
+- [x] Live feed with relevance-gated classification across 4 categories
+- [x] Smart contract deployed and verified on Arc Testnet
+- [x] Full stake, resolve, claim cycle tested onchain
+- [x] Automated market creation from live events, via GitHub Actions
+- [ ] Decentralized / dispute-based resolution instead of owner-attested
+- [ ] Mainnet deployment
+- [ ] Public track record. How often does Hawk vs. Dove actually call it right?
 
-MIT — see [LICENSE](./LICENSE).
+## Why Arc
 
-## For reviewers (Arc team)
+Risk markets like this live or die on settlement cost and speed. Arc's native USDC gas means every stake, claim, and market creation is just one cheap, stablecoin-denominated transaction. No bridging, no wrapped tokens, no separate gas token to keep topped up. That's basically the whole bet here. The chain should stay out of the way of the prediction, not add friction on top of it.
 
-Quick verification path:
+---
 
-1. `bun install && bunx vitest run` — confirms sanitization invariants.
-2. `bun run build` — confirms the project builds for the Cloudflare
-   Worker target with zero TS errors.
-3. Open the live preview, connect a wallet, switch to Arc Testnet, and
-   confirm a verdict can be attested onchain (tx hash deep-links to
-   `testnet.arcscan.app`).
-4. Inspect `src/lib/arc.ts` for the exact chain config used.
+<div align="center">
 
-Questions → open an issue or reach out via the repository contact.
+Built by [@blocknine0](https://github.com/blocknine0) · Questions or bugs? [Open an issue](../../issues)
+
+</div>

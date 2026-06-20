@@ -74,7 +74,7 @@ USDC is Arc's native gas token, so staking is just a payable call. No approve st
 ## Repo layout
 
 ```
-src/                          Frontend — Live Feed, Agent Arena, wallet connection
+src/                          Frontend. Live Feed, Agent Arena, wallet connection
 scripts/create-markets.js     Checks Supabase for new high-severity events,
                                opens markets onchain automatically
 .github/workflows/

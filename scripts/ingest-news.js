@@ -40,9 +40,11 @@ const CATEGORIES = [
   {
     name: "rare_earth",
     queries: [
-      "rare earth minerals lithium cobalt supply chain",
-      "semiconductor chips export controls",
-      "critical minerals mining energy transition",
+      "rare earth minerals lithium cobalt nickel supply chain",
+      "semiconductor chips export controls ASML",
+      "critical minerals mining battery materials",
+      "strategic industrial policy chip war",
+      "EV battery supply chain disruption",
     ],
   },
   {
@@ -72,11 +74,15 @@ async function fetchNewsAPI(query, apiKey) {
 }
 
 async function classifyWithGroq(article, category, groqKey) {
+  const categoryContext = category === "rare_earth"
+    ? `rare_earth (includes: rare earth minerals, lithium, cobalt, nickel, critical minerals, semiconductors, chips, ASML, chip export controls, AI hardware supply chains, battery materials, EV supply chains, strategic industrial policy, mining policy)`
+    : category;
+
   const prompt = `You are a geopolitical risk classifier. Analyze this news article and respond ONLY with valid JSON, no markdown, no explanation.
 
 Article title: ${article.title}
 Article description: ${article.description || ""}
-Category context: ${category}
+Category context: ${categoryContext}
 
 Respond with this exact JSON structure:
 {
@@ -88,7 +94,8 @@ Respond with this exact JSON structure:
 }
 
 Severity guide: 0-20 noise, 21-40 minor, 41-60 moderate, 61-80 significant, 81-100 critical.
-Mark relevant false if the article is not genuinely about ${category} risk at a macro level.`;
+Mark relevant false if the article is not genuinely about ${categoryContext} risk at a macro level.
+For rare_earth category: semiconductors, chip export controls, ASML, critical minerals, battery supply chains and strategic industrial policy ARE relevant. Lifestyle, entertainment, sports are NOT relevant.`;
 
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",

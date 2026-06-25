@@ -3,19 +3,12 @@
 // Automation script for Geomacro Agent Arena.
 // Runs on a schedule via GitHub Actions, separate from create-markets.js.
 //
-// What it does:
-// 1. Finds all OPEN markets on the AgentArena contract that were created
-//    more than 48 hours ago (minimum resolution window).
-// 2. For each one, asks Groq to re-assess whether the situation has
-//    escalated (HAWK wins) or de-escalated (DOVE wins) based on the
-//    original story context, using the latest severity stored in Supabase.
-// 3. Calls declareWinner(marketId, side) using the owner wallet.
-//
 // Resolution logic:
 // - Markets resolve between 48h and 72h after creation.
-// - Groq re-reads the original story and compares initial vs current context.
-// - If Groq is uncertain (confidence < 60), DOVE wins (de-escalation is the
-//   conservative default when outcome is unclear).
+// - Groq is given the exact market question, original severity and threshold.
+// - Groq judges whether severity crossed the threshold, based on the story.
+// - If Groq confidence < 60, DOVE wins (conservative default).
+// - market_threshold is always passed explicitly — no guessing.
 //
 // Required environment variables:
 //   OWNER_PRIVATE_KEY, APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY,
@@ -25,9 +18,8 @@ import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
 const CONTRACT_ADDRESS = "0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D";
-const MIN_RESOLUTION_HOURS = 48; // don't resolve before 48h
-const MAX_RESOLUTION_HOURS = 72; // must resolve by 72h
-const GROQ_CONFIDENCE_THRESHOLD = 60; // if Groq is unsure, DOVE wins
+const MIN_RESOLUTION_HOURS = 48;
+const GROQ_CONFIDENCE_THRESHOLD = 60;
 
 const CONTRACT_ABI = [
   "event MarketCreated(string marketId)",
@@ -38,22 +30,29 @@ const CONTRACT_ABI = [
 const SIDE = { NONE: 0, HAWK: 1, DOVE: 2 };
 
 async function askGroqForOutcome(event, groqKey) {
-  const prompt = `You are resolving a geopolitical risk prediction market.
+  const threshold = event.market_threshold ?? (event.severity + 5);
 
-Original story: "${event.source_title}"
-Category: ${event.category}
-Severity when market opened: ${event.severity}/100
-Market question: Did this situation ESCALATE significantly in the 48-72 hours after the market opened?
+  // Groq is given the exact market question and threshold.
+  // It judges whether the situation crossed the threshold, not a generic opinion.
+  const prompt = `You are settling a prediction market. Answer based on real-world outcomes.
 
-Based on what you know about this story and how geopolitical situations typically evolve:
-- HAWK wins if the situation clearly escalated (more conflict, breakdown of talks, military action, sanctions, market panic)
-- DOVE wins if the situation de-escalated, held steady, or resolved peacefully
+Market question: Did "${event.source_title}" escalate past severity ${threshold}/100 within 48 hours of opening?
 
-Respond ONLY with valid JSON, no markdown:
+Context:
+- Category: ${event.category}
+- Severity when market opened: ${event.severity}/100
+- Escalation threshold: ${threshold}/100
+- HAWK wins if severity crossed ${threshold} (conflict escalated, talks collapsed, military action, sanctions imposed, market panic)
+- DOVE wins if severity stayed below ${threshold} (de-escalation, talks progressed, situation held steady, ceasefire held)
+
+Base your judgment on what actually happened with this specific story.
+If you are uncertain, default to DOVE.
+
+Respond ONLY with valid JSON, no markdown, no explanation outside the JSON:
 {
   "outcome": "HAWK" or "DOVE",
   "confidence": integer 0-100,
-  "reasoning": "one sentence explanation"
+  "reasoning": "one sentence citing a specific real-world development"
 }`;
 
   const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -77,6 +76,13 @@ Respond ONLY with valid JSON, no markdown:
   try {
     return JSON.parse(text.replace(/```json|```/g, "").trim());
   } catch {
+    // Try extracting first JSON object from response
+    const match = text.match(/\{[\s\S]*?\}/);
+    if (match) {
+      try {
+        return JSON.parse(match[0]);
+      } catch {}
+    }
     console.warn("  Groq returned unparseable JSON, defaulting to DOVE.");
     return { outcome: "DOVE", confidence: 0, reasoning: "parse error, defaulting to DOVE" };
   }
@@ -113,9 +119,7 @@ async function main() {
   while (fromBlock <= latestBlock) {
     const toBlock = Math.min(fromBlock + CHUNK - 1, latestBlock);
     const events = await contract.queryFilter(filter, fromBlock, toBlock);
-    for (const e of events) {
-      marketIds.push(e.args.marketId);
-    }
+    for (const e of events) marketIds.push(e.args.marketId);
     fromBlock = toBlock + 1;
   }
 
@@ -126,7 +130,7 @@ async function main() {
   for (const marketId of marketIds) {
     const market = await contract.markets(marketId);
 
-    // Skip if already resolved
+    // Skip already resolved
     if (Number(market.status) !== 0) continue;
 
     // Only handle Supabase-linked markets
@@ -138,7 +142,7 @@ async function main() {
 
     const { data: event, error } = await supabase
       .from("events")
-      .select("id, severity, created_at, source_title, category, market_threshold")
+      .select("id, severity, created_at, source_title, category, market_threshold, resolution_at")
       .eq("id", eventId)
       .single();
 
@@ -147,22 +151,24 @@ async function main() {
       continue;
     }
 
-    const createdAt = new Date(event.created_at);
-    const hoursSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+    // Use resolution_at from Supabase if available (single source of truth)
+    // otherwise fall back to created_at + 48h
+    const resolutionAt = event.resolution_at
+      ? new Date(event.resolution_at)
+      : new Date(new Date(event.created_at).getTime() + MIN_RESOLUTION_HOURS * 60 * 60 * 1000);
 
-    // Too early — wait until 48h minimum
-    if (hoursSinceCreation < MIN_RESOLUTION_HOURS) {
-      console.log(
-        `Skipping ${marketId}: only ${hoursSinceCreation.toFixed(1)}h old. Resolves after ${MIN_RESOLUTION_HOURS}h.`
-      );
+    if (Date.now() < resolutionAt.getTime()) {
+      const hoursLeft = (resolutionAt.getTime() - Date.now()) / (1000 * 60 * 60);
+      console.log(`Skipping ${marketId}: resolves in ${hoursLeft.toFixed(1)}h.`);
       continue;
     }
 
+    const threshold = event.market_threshold ?? (event.severity + 5);
     console.log(
-      `Resolving ${marketId} ("${event.source_title}") — ${hoursSinceCreation.toFixed(1)}h old...`
+      `Resolving ${marketId} ("${event.source_title}") — threshold ${threshold}, severity at creation ${event.severity}...`
     );
 
-    // Ask Groq to judge the outcome
+    // Ask Groq with explicit threshold and market question
     let groqResult;
     try {
       groqResult = await askGroqForOutcome(event, GROQ_API_KEY);
@@ -175,7 +181,7 @@ async function main() {
       `  Groq verdict: ${groqResult.outcome} (confidence ${groqResult.confidence}%) — ${groqResult.reasoning}`
     );
 
-    // If Groq is uncertain, DOVE wins (conservative default)
+    // Low confidence defaults to DOVE
     let winningSide;
     if (groqResult.confidence < GROQ_CONFIDENCE_THRESHOLD) {
       console.log(`  Low confidence (${groqResult.confidence}%), defaulting to DOVE.`);
@@ -188,13 +194,14 @@ async function main() {
       const tx = await contract.declareWinner(marketId, winningSide);
       console.log(`  tx sent: ${tx.hash}`);
       const receipt = await tx.wait();
-      console.log(`  confirmed in block ${receipt.blockNumber}. Winner: ${winningSide === SIDE.HAWK ? "HAWK" : "DOVE"}`);
+      console.log(
+        `  confirmed in block ${receipt.blockNumber}. Winner: ${winningSide === SIDE.HAWK ? "HAWK" : "DOVE"}`
+      );
       resolvedCount++;
     } catch (err) {
       console.error(`  Failed to resolve ${marketId}: ${err.message}`);
     }
 
-    // Small delay between resolutions
     await new Promise((r) => setTimeout(r, 1000));
   }
 

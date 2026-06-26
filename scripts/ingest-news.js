@@ -57,7 +57,7 @@ const CATEGORIES = [
   },
 ];
 
-const MAX_PER_CATEGORY = 3;
+const MAX_PER_CATEGORY = 2; // reduced to avoid Groq rate limits
 const HOURS_BACK = 48;
 
 function urlHash(url) {
@@ -219,8 +219,8 @@ async function main() {
       insertedThisCategory++;
       totalInserted++;
 
-      // Small delay to avoid hitting Groq rate limits
-      await new Promise((r) => setTimeout(r, 500));
+      // Delay to avoid Groq rate limits
+      await new Promise((r) => setTimeout(r, 1500));
     }
 
     console.log(`  Inserted ${insertedThisCategory} events for ${category.name}.`);

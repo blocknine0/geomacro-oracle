@@ -14,25 +14,18 @@
 
 ---
 
-Geomacro watches the news, scores the risk, and lets two AI agents argue about where things are headed. Real money sits behind it and everything settles onchain.
+Geomacro reads the news, scores the risk and lets two AI agents argue about what happens next. Agent Hawk bets on escalation. Agent Dove bets on calm. Every market opens automatically from live news, settles in USDC on Arc and resolves in 48 hours.
 
 > **Live site:** https://www.geomacro.live
-> **Contract:** `0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D`
+> **Contract:** `0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D` on Arc Testnet
+
+---
 
 ## What this is
 
-Most "AI news" tools just summarize headlines and stop there. I wanted something that actually *does* something with the read. So Geomacro pulls live geopolitical, macro, rare-earth, and crypto news, scores each story for severity and confidence and once something crosses a threshold it opens a market automatically. No human has to notice the news and decide to act on it. The pipeline handles that part.
+Most prediction markets wait for humans to notice the news. Here, markets open themselves. An LLM scores every breaking story, two AI agents argue opposite outcomes and anyone can stake real USDC on who is right. Everything settles onchain in USDC on Arc. No custodian, no middleman.
 
-From there, two agents take opposite sides:
-
-| | Predicts | |
-|:---:|:---|:---:|
-| 🦅 **Agent Hawk** | risk *escalates*, severity rising, ceasefires breaking | |
-| 🕊️ **Agent Dove** | risk *cools*, de-escalation, mediation, ceasefires holding | |
-
-Anyone can stake real USDC on Arc Testnet behind whichever side they think is right. When the outcome's clear, the market resolves and winners claim their payout straight from the contract.
-
-**Nothing here is a mockup.** The contract is deployed and verified. The ingest pipeline runs on a public schedule you can go check right now. The whole stake, resolve, and claim loop has been tested onchain with real transactions.
+I built Geomacro because the gap between "news breaks" and "market opens" is where the real signal lives. By the time a human-curated platform lists a market, the uncertainty has already partially resolved. Geomacro closes that gap.
 
 ## How it fits together
 
@@ -40,48 +33,51 @@ Anyone can stake real USDC on Arc Testnet behind whichever side they think is ri
 NewsAPI  →  Groq (llama-3.3-70b)  →  Supabase  →  Live Feed
                                           │
                                           ▼
-                          GitHub Actions, every ~2 hours
+                       GitHub Actions, every ~2 hours
+                         (ingest → create → resolve)
                                           │
                                           ▼
                         AgentArena.sol on Arc Testnet
                     createMarket → stake → declareWinner → claim
 ```
 
-A few notes on each piece:
+**Ingestion.** NewsAPI pulls fresh articles across four categories: geopolitics, macro, rare-earth/commodities and crypto. Off-topic articles are rejected before they reach the feed, not just filtered by keyword.
 
-🔍 **Ingestion.** NewsAPI pulls fresh articles across four categories on a loop. Nothing fancy, just polling.
+**Classification.** Groq scores each article for severity, confidence and relevance. This part took a few iterations to get right. Early on it was letting through celebrity gossip and exam results tagged as "macro," so there is now a fairly strict relevance gate before anything reaches the feed.
 
-🧠 **Classification.** Groq scores each article for severity, confidence, and relevance. This part took a few iterations to get right. Early on it was letting through celebrity gossip and exam results tagged as "macro," so there's now a fairly strict relevance gate before anything reaches the feed.
+**Storage.** Supabase holds the event log. The frontend reads straight from it.
 
-🗄️ **Storage.** Supabase holds the event log. The frontend reads straight from it.
+**Market automation.** Three independent GitHub Actions workflows run on a schedule. One ingests fresh news every two hours. A second scans for high-severity events without a market and opens one on Arc. A third checks markets that have passed their 48-hour window, asks Groq to judge which side aged better and calls declareWinner() automatically. No human approval step in any of them.
 
-⚙️ **Market automation.** A scheduled GitHub Action checks for high-severity events that don't have a market yet and opens one on Arc directly. No manual step. It's set to run every 2 hours. GitHub doesn't guarantee exact timing on scheduled workflows, so actual runs can drift, but they're consistently landing within that window. You can see the actual run logs in the [Actions tab](../../actions) of this repo.
-
-💰 **Settlement.** `AgentArena.sol` holds staked USDC until a market resolves, then pays out proportionally to whoever backed the winning side.
+**Settlement.** AgentArena.sol holds staked USDC until a market resolves, then pays out proportionally to whoever backed the winning side. Winners receive their original stake plus a proportional share of the losing pool.
 
 ## The contract
 
-Kept this intentionally small. No governance token, no oracle network, no multisig. Just enough to prove the settlement loop actually works end to end before adding more moving parts:
+Kept this intentionally small. No governance token, no oracle network, no multisig. Just enough to prove the settlement loop actually works end to end before adding more moving parts.
 
 ```solidity
 createMarket(marketId)          // owner opens a market
 stake(marketId, side) payable   // anyone backs HAWK or DOVE with USDC
-declareWinner(marketId, side)   // owner resolves once the outcome is clear
+declareWinner(marketId, side)   // automated resolver declares outcome
 claim(marketId)                 // winners withdraw their share
 ```
 
-USDC is Arc's native gas token, so staking is just a payable call. No approve step, no ERC-20 friction to deal with.
+USDC is Arc's native gas token, so staking is just a payable call. No approve step, no ERC-20 friction.
 
-**One honest tradeoff worth calling out:** resolution right now is owner-attested rather than dispute-based like UMA. For a market that settles in hours, not days, a full dispute window adds latency without buying much trust at this stage of the project. Decentralizing that is the obvious next step. It's on the roadmap below, not pretending to be solved already.
+**One honest tradeoff worth calling out:** resolution right now uses Groq to re-read the original story 48 hours later and judge which call aged better. This is more informative than a raw severity comparison but still relies on an LLM judgment rather than a dispute-based mechanism like UMA. Decentralizing resolution is the obvious next step and it is on the roadmap below.
 
 ## Repo layout
 
 ```
-src/                          Frontend. Live Feed, Agent Arena, wallet connection
-scripts/create-markets.js     Checks Supabase for new high-severity events,
-                               opens markets onchain automatically
+src/                              Frontend. Live Feed, Agent Arena, wallet connection
+scripts/
+  ingest-news.js                  Pulls NewsAPI articles, classifies with Groq, inserts to Supabase
+  create-markets.js               Scans for high-severity events, opens markets on Arc
+  resolve-markets.js              Checks 48h+ markets, asks Groq for verdict, calls declareWinner()
 .github/workflows/
-  auto-create-markets.yml     Runs the script above on a schedule (~every 2 hours)
+  auto-ingest-news.yml            Runs ingest-news.js every ~2 hours
+  auto-create-markets.yml         Runs create-markets.js every ~2 hours (30 min after ingest)
+  auto-resolve-markets.yml        Runs resolve-markets.js every ~2 hours (30 min after create)
 ```
 
 ## Running it locally
@@ -93,22 +89,25 @@ bun install
 bun run dev
 ```
 
-You'll need your own `NEWSAPI_KEY`, `GROQ_API_KEY`, and a Supabase project. See `.env.example`.
+You will need your own `NEWSAPI_KEY`, `GROQ_API_KEY`, and a Supabase project. See `.env.example`.
 
 ## Roadmap
 
-- [x] Live feed with relevance-gated classification across 4 categories
+- [x] Live feed pipeline with relevance-gated classification across 4 categories
 - [x] Smart contract deployed and verified on Arc Testnet
-- [x] Full stake, resolve, claim cycle tested onchain
-- [x] Automated market creation from live events, via GitHub Actions
-- [ ] Decentralized / dispute-based resolution instead of owner-attested
+- [x] Full create, stake, resolve and claim cycle tested onchain
+- [x] Automated market creation from live events via GitHub Actions
+- [x] Automated market resolution via Groq judgment after 48 hour window
+- [x] Dynamic Arena with no hardcoded markets, pure on-chain discovery
+- [x] AI Duel feature showing market-specific Hawk and Dove arguments before staking
+- [ ] Decentralized dispute-based resolution instead of LLM-attested settlement
 - [ ] Mainnet deployment
-- [ ] Public track record. How often does Hawk vs. Dove actually call it right?
-- [ ] Full iPhone wallet support via WalletConnect for external browsers (Safari/Chrome). Wallet connection currently works through desktop browser extensions and in-app mobile wallet browsers (MetaMask Mobile, Rabby Mobile). Connecting from a regular iPhone Safari tab via WalletConnect QR is planned but not yet stable.
+- [ ] Public track record showing how often Hawk vs. Dove actually calls it right
+- [ ] Full mobile wallet support via WalletConnect for external browsers
 
 ## Why Arc
 
-Risk markets like this live or die on settlement cost and speed. Arc's native USDC gas means every stake, claim and market creation is just one cheap, stablecoin-denominated transaction. No bridging, no wrapped tokens, no separate gas token to keep topped up. That's basically the whole bet here. The chain should stay out of the way of the prediction, not add friction on top of it.
+Risk markets like this live or die on settlement cost and speed. Arc's native USDC gas means every stake, claim and market creation is just one cheap, stablecoin-denominated transaction. No bridging, no wrapped tokens, no separate gas token to keep topped up. That is basically the whole bet here. The chain should stay out of the way of the prediction, not add friction on top of it.
 
 ---
 

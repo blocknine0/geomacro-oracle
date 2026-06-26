@@ -20,6 +20,7 @@ import { createClient } from "@supabase/supabase-js";
 const CONTRACT_ADDRESS = "0xa1dA6c1AC816B7b9D740ca284AC342D0b704Ce6D";
 const MIN_RESOLUTION_HOURS = 48;
 const GROQ_CONFIDENCE_THRESHOLD = 60;
+const MAX_RESOLUTIONS_PER_RUN = 5; // cap to avoid Groq rate limits
 
 const CONTRACT_ABI = [
   "event MarketCreated(string marketId)",
@@ -202,7 +203,13 @@ async function main() {
       console.error(`  Failed to resolve ${marketId}: ${err.message}`);
     }
 
-    await new Promise((r) => setTimeout(r, 1000));
+    // Longer delay to avoid Groq rate limits
+    await new Promise((r) => setTimeout(r, 2000));
+
+    if (resolvedCount >= MAX_RESOLUTIONS_PER_RUN) {
+      console.log(`Reached max resolutions per run (${MAX_RESOLUTIONS_PER_RUN}). Stopping. Remaining markets will resolve next run.`);
+      break;
+    }
   }
 
   console.log(`Done. Resolved ${resolvedCount} market(s) this run.`);

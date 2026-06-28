@@ -68,9 +68,52 @@ async function fetchNewsAPI(query, apiKey) {
   const from = new Date(Date.now() - HOURS_BACK * 60 * 60 * 1000).toISOString();
   const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&from=${from}&sortBy=publishedAt&pageSize=5&language=en&apiKey=${apiKey}`;
   const res = await fetch(url);
+  if (res.status === 429) throw new Error("RATE_LIMIT");
   if (!res.ok) throw new Error(`NewsAPI error: ${res.status}`);
   const data = await res.json();
   return data.articles || [];
+}
+
+async function fetchGuardianAPI(query, apiKey) {
+  const from = new Date(Date.now() - HOURS_BACK * 60 * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
+  const url = `https://content.guardianapis.com/search?q=${encodeURIComponent(query)}&from-date=${from}&order-by=newest&page-size=5&show-fields=trailText&api-key=${apiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Guardian API error: ${res.status}`);
+  const data = await res.json();
+  return (data.response?.results || []).map((a) => ({
+    url: a.webUrl,
+    title: a.webTitle,
+    description: a.fields?.trailText || "",
+    source: { name: "The Guardian" },
+    publishedAt: a.webPublicationDate,
+  }));
+}
+
+async function fetchArticles(query, newsApiKey, guardianApiKey) {
+  // Try NewsAPI first
+  if (newsApiKey) {
+    try {
+      const articles = await fetchNewsAPI(query, newsApiKey);
+      return articles;
+    } catch (err) {
+      if (err.message === "RATE_LIMIT") {
+        console.warn(`  NewsAPI rate limit hit for query "${query}". Trying Guardian...`);
+      } else {
+        console.warn(`  NewsAPI error: ${err.message}. Trying Guardian...`);
+      }
+    }
+  }
+  // Fallback: Guardian API
+  if (guardianApiKey) {
+    try {
+      return await fetchGuardianAPI(query, guardianApiKey);
+    } catch (err) {
+      console.warn(`  Guardian API error: ${err.message}.`);
+    }
+  }
+  return [];
 }
 
 async function classifyWithGroq(article, category, groqKey) {
@@ -124,10 +167,14 @@ For rare_earth category: semiconductors, chip export controls, ASML, critical mi
 }
 
 async function main() {
-  const { NEWSAPI_KEY, GROQ_API_KEY, APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY } = process.env;
+  const { NEWSAPI_KEY, GROQ_API_KEY, APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY, GUARDIAN_API_KEY } = process.env;
 
-  if (!NEWSAPI_KEY || !GROQ_API_KEY || !APP_SUPABASE_URL || !APP_SUPABASE_ANON_KEY) {
+  if (!GROQ_API_KEY || !APP_SUPABASE_URL || !APP_SUPABASE_ANON_KEY) {
     throw new Error("Missing required environment variables.");
+  }
+
+  if (!NEWSAPI_KEY && !GUARDIAN_API_KEY) {
+    throw new Error("At least one of NEWSAPI_KEY or GUARDIAN_API_KEY is required.");
   }
 
   const supabase = createClient(APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY);
@@ -152,9 +199,9 @@ async function main() {
     for (const query of category.queries) {
       let articles;
       try {
-        articles = await fetchNewsAPI(query, NEWSAPI_KEY);
+        articles = await fetchArticles(query, NEWSAPI_KEY, GUARDIAN_API_KEY);
       } catch (err) {
-        console.warn(`  NewsAPI error for query "${query}": ${err.message}`);
+        console.warn(`  Error fetching articles for query "${query}": ${err.message}`);
         continue;
       }
 

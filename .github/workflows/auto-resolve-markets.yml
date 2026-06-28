@@ -30,6 +30,7 @@ jobs:
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
           ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
         run: node scripts/resolve-markets.js
         

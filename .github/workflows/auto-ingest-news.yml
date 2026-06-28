@@ -26,6 +26,7 @@ jobs:
       - name: Run news ingestion script
         env:
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
+          GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}

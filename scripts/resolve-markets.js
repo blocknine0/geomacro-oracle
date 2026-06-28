@@ -105,8 +105,8 @@ async function groqWithRetry(payload, groqKey, label = "") {
   throw new Error(`Groq: max retries (${GROQ_MAX_RETRIES}) exceeded for ${label}`);
 }
 
-// ── NewsAPI context fetch ─────────────────────────────────────────────────────
-async function fetchLatestNewsContext(event, newsApiKey) {
+// ── NewsAPI context fetch with Guardian fallback ──────────────────────────────
+async function fetchLatestNewsContext(event, newsApiKey, guardianApiKey) {
   const keywords = event.source_title
     .replace(/['"]/g, "")
     .split(" ")
@@ -117,28 +117,55 @@ async function fetchLatestNewsContext(event, newsApiKey) {
     new Date(event.created_at).getTime() - 24 * 60 * 60 * 1000
   ).toISOString();
 
-  const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(keywords)}&from=${from}&sortBy=publishedAt&pageSize=5&language=en&apiKey=${newsApiKey}`;
-
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`NewsAPI error: ${res.status}`);
-    const data = await res.json();
-    const articles = (data.articles || []).slice(0, 5);
-
-    if (articles.length === 0) {
-      return { context: "No recent news found for this story.", sources: [] };
+  // Try NewsAPI first
+  if (newsApiKey) {
+    try {
+      const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(keywords)}&from=${from}&sortBy=publishedAt&pageSize=5&language=en&apiKey=${newsApiKey}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const articles = (data.articles || []).slice(0, 5);
+        if (articles.length > 0) {
+          const sources = articles.map((a) => a.source?.name || "Unknown");
+          const context = articles
+            .map((a, i) => `[${i + 1}] ${a.source?.name}: ${a.title}. ${a.description || ""}`)
+            .join("\n");
+          console.log(`  News source: NewsAPI`);
+          return { context, sources };
+        }
+      } else if (res.status !== 429) {
+        throw new Error(`NewsAPI error: ${res.status}`);
+      } else {
+        console.warn(`  NewsAPI 429 (rate limit). Trying Guardian API...`);
+      }
+    } catch (err) {
+      console.warn(`  NewsAPI failed: ${err.message}. Trying Guardian API...`);
     }
-
-    const sources = articles.map((a) => a.source?.name || "Unknown");
-    const context = articles
-      .map((a, i) => `[${i + 1}] ${a.source?.name}: ${a.title}. ${a.description || ""}`)
-      .join("\n");
-
-    return { context, sources };
-  } catch (err) {
-    console.warn(`  NewsAPI fetch failed: ${err.message}. Proceeding without news context.`);
-    return { context: "NewsAPI unavailable for this resolution.", sources: [] };
   }
+
+  // Fallback: Guardian API
+  if (guardianApiKey) {
+    try {
+      const url = `https://content.guardianapis.com/search?q=${encodeURIComponent(keywords)}&from-date=${from.split("T")[0]}&order-by=newest&page-size=5&show-fields=trailText&api-key=${guardianApiKey}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Guardian API error: ${res.status}`);
+      const data = await res.json();
+      const articles = (data.response?.results || []).slice(0, 5);
+      if (articles.length > 0) {
+        const sources = articles.map(() => "The Guardian");
+        const context = articles
+          .map((a, i) => `[${i + 1}] The Guardian: ${a.webTitle}. ${a.fields?.trailText || ""}`)
+          .join("\n");
+        console.log(`  News source: Guardian API`);
+        return { context, sources };
+      }
+    } catch (err) {
+      console.warn(`  Guardian API failed: ${err.message}.`);
+    }
+  }
+
+  console.warn(`  No news context available. Proceeding without.`);
+  return { context: "No recent news found for this story.", sources: [] };
 }
 
 // ── Single Groq verdict with retry ────────────────────────────────────────────
@@ -255,14 +282,15 @@ async function main() {
     ARC_RPC_URL,
     GROQ_API_KEY,
     NEWSAPI_KEY,
+    GUARDIAN_API_KEY,
   } = process.env;
 
   if (!OWNER_PRIVATE_KEY || !APP_SUPABASE_URL || !APP_SUPABASE_ANON_KEY || !ARC_RPC_URL || !GROQ_API_KEY) {
     throw new Error("Missing required environment variables.");
   }
 
-  if (!NEWSAPI_KEY) {
-    console.warn("NEWSAPI_KEY not set. Resolving without verified news context.");
+  if (!NEWSAPI_KEY && !GUARDIAN_API_KEY) {
+    console.warn("Neither NEWSAPI_KEY nor GUARDIAN_API_KEY set. Resolving without verified news context.");
   }
 
   const supabase = createClient(APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY);
@@ -336,9 +364,9 @@ async function main() {
 
     // Fetch verified news context
     console.log(`  Fetching latest news context from NewsAPI...`);
-    const { context: newsContext, sources } = NEWSAPI_KEY
-      ? await fetchLatestNewsContext(event, NEWSAPI_KEY)
-      : { context: "NewsAPI not configured.", sources: [] };
+    const { context: newsContext, sources } = (NEWSAPI_KEY || GUARDIAN_API_KEY)
+      ? await fetchLatestNewsContext(event, NEWSAPI_KEY, GUARDIAN_API_KEY)
+      : { context: "No news API configured.", sources: [] };
 
     if (sources.length > 0) {
       console.log(`  Verified sources: ${sources.join(", ")}`);

@@ -107,5 +107,6 @@ export async function claimOnContract(marketId: string): Promise<string> {
   const signer = await provider.getSigner();
   const contract = new Contract(AGENT_ARENA_ADDRESS, AGENT_ARENA_ABI, signer);
   const tx = await contract.claim(marketId);
+  await tx.wait();
   return tx.hash as string;
 }

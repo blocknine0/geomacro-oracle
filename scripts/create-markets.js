@@ -2,8 +2,7 @@
 import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
-// toLowerCase() করে ethers.getAddress() এ দিলে ethers নিজেই নিখুঁত Checksum জেনারেট করে নেয়
-// ওল্ড অ্যাড্রেসটি কেটে সরাসরি নতুন লাইভ অ্যাড্রেস বসিয়ে দিন
+// Checksum সুরক্ষিত লেটেস্ট ডিপ্লয়ড কন্ট্রাক্ট অ্যাড্রেস
 const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase()); 
 
@@ -13,6 +12,7 @@ const THRESHOLD_STEP = 5;
 const STAKING_DURATION_SEC = 46 * 60 * 60;   
 const RESOLUTION_DURATION_SEC = 48 * 60 * 60; 
 
+// আপডেটেড ABI (markets এর বদলে getMarket)
 const CONTRACT_ABI = [
   "function createMarket(string marketId, uint256 stakingDuration, uint256 resolutionDuration) external",
   "function getMarket(string marketId) view returns (uint8 status, uint256 hawkTotal, uint256 doveTotal, bool exists)",
@@ -32,10 +32,10 @@ async function main() {
   const wallet = new ethers.Wallet(OWNER_PRIVATE_KEY, provider);
   const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
 
-  // চেইনে বাইটকোড ভ্যালিডেশন চেক (value="0x" এরর এড়াতে)
+  // চেইনে বাইটকোড ভ্যালিডেশন 
   const code = await provider.getCode(CONTRACT_ADDRESS);
   if (code === "0x" || code === "0x00") {
-    console.error("❌ ERROR: No contract bytecode found! Check RPC URL or contract address in GitHub Secrets.");
+    console.error("❌ ERROR: No contract bytecode found at this address!");
     process.exit(1);
   }
 
@@ -57,10 +57,11 @@ async function main() {
     try {
       let marketExists = false;
       try {
+        // ওল্ড ডিকোড এরর এড়াতে পারফেক্ট অন-চেইন getMarket কল
         const existing = await contract.getMarket(marketId);
         marketExists = existing.exists;
       } catch (decodeErr) {
-        console.log(`On-chain view empty for ${marketId}. Proceeding with fresh creation request.`);
+        console.log(`Market entry fetch empty for ${marketId}, assuming false.`);
       }
 
       if (marketExists) {

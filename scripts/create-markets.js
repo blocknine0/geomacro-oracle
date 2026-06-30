@@ -2,8 +2,8 @@
 import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
-// আপনার নতুন সাকসেসফুলি ডিপ্লয় হওয়া কন্ট্রাক্ট অ্যাড্রেস (Warning Free Osaka)
-const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC0226c1AC816B7b9D740ca284AC342D0b704CE6D";
+// toLowerCase() দিয়ে চেকসাম ট্র্যাপ পুরোপুরি দূর করা হয়েছে
+const CONTRACT_ADDRESS = (process.env.CONTRACT_ADDRESS || "0xC0226c1AC816B7b9D740ca284AC342D0b704CE6D").toLowerCase();
 const MAX_NEW_MARKETS_PER_RUN = 10; 
 const THRESHOLD_STEP = 5; 
 

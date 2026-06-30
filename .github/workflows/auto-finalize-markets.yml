@@ -1,0 +1,20 @@
+name: Auto Finalize Markets
+
+on:
+  schedule:
+    - cron: '0 */2 * * *' # প্রতি ২ ঘণ্টা পর পর স্বয়ংক্রিয়ভাবে ব্যাকএন্ডে রান হবে
+  workflow_dispatch: # প্রয়োজন হলে ম্যানুয়ালি রান করার জন্য বোতাম
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+      - run: bun install
+      - run: bun scripts/finalize-markets.js
+        env:
+          OWNER_PRIVATE_KEY: ${{ secrets.OWNER_PRIVATE_KEY }}
+          APP_SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
+          APP_SUPABASE_ANON_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
+          ARC_RPC_URL: ${{ secrets.ARC_RPC_URL }}

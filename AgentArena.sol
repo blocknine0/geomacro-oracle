@@ -2,24 +2,21 @@
 pragma solidity ^0.8.20;
 
 /**
- * AgentArena (Upgraded)
- * ---------------------
- * Features added:
- * 1. Anti-MEV / Front-running window locks.
- * 2. Optimistic AI Resolution + 24h Public Stake-Backed Dispute Window.
- * 3. 1.5% Protocol revenue fee routed to the treasury wallet.
- * 4. Anti-spam DAO voting mechanics with $50 USDC dispute fee.
+ * AgentArena (Memory Optimized)
+ * -----------------------------
+ * Anti-MEV, DAO Dispute, and 1.5% Revenue Platform Fee enabled.
+ * Scoped blocks used to prevent EVM 'Stack too deep' compilation errors.
  */
 contract AgentArena {
     address public owner;
-    address public treasury; // রেভিনিউ কালেক্ট করার জন্য ওয়ালেট অ্যাড্রেস
+    address public treasury; 
 
-    uint256 public constant DISPUTE_FEE = 50 * 10**6;            // ৫০ USDC (ধরে নিচ্ছি ৬ ডেসিমিলে)
-    uint256 public constant DISPUTE_WINDOW = 24 * 60 * 60;        // ২৪ ঘণ্টা আপিল উইন্ডো
-    uint256 public constant MIN_VOLUME_FOR_DISPUTE = 500 * 10**6;  // ৫০০ USDC এর নিচে ডিসপিউট অসম্ভব
-    uint256 public constant MIN_VOTE_AMOUNT = 5 * 10**6;          // স্প্যাম রোধে মিনিমাম ৫ USDC ভোট
-    uint256 public constant PROTOCOL_FEE_BPS = 150;              // ১.৫% প্রোটোকল ফি (150 BPS)
-    uint256 public constant TREASURY_DISPUTE_SHARE_BPS = 3000;    // হারানো ডিসপিউট ফি-এর ৩০% আপনার লাভ
+    uint256 public constant DISPUTE_FEE = 50 * 10**6;            // ৫০ USDC
+    uint256 public constant DISPUTE_WINDOW = 24 * 60 * 60;        // ২৪ ঘণ্টা
+    uint256 public constant MIN_VOLUME_FOR_DISPUTE = 500 * 10**6;  // ৫০০ USDC
+    uint256 public constant MIN_VOTE_AMOUNT = 5 * 10**6;          // ৫ USDC
+    uint256 public constant PROTOCOL_FEE_BPS = 150;              // ১.৫% (150 BPS)
+    uint256 public constant TREASURY_DISPUTE_SHARE_BPS = 3000;    // ৩০%
 
     enum Side { NONE, HAWK, DOVE }
     enum Status { OPEN, LOCKED, AI_RESOLVED, DISPUTED, FINALIZED }
@@ -27,29 +24,22 @@ contract AgentArena {
     struct Market {
         string marketId;
         Status status;
-        Side winner;          // ফাইনাল বিজয়ী
-        Side tentativeWinner; // AI-এর দেওয়া সাময়িক বিজয়ী
+        Side winner;          
+        Side tentativeWinner; 
         uint256 hawkTotal;
         uint256 doveTotal;
         uint256 stakingEndTime;
         uint256 resolutionTime;
         uint256 aiResolutionTime;
         address disputer;
-        uint256 hawkVotes;    // ডিসপিউটের সময় HAWK পক্ষে পড়া ভোটের সংখ্যা
-        uint256 doveVotes;    // ডিসপিউটের সময় DOVE পক্ষে পড়া ভোটের সংখ্যা
+        uint256 hawkVotes;    
+        uint256 doveVotes;    
         bool exists;
     }
 
-    // marketId (string) => Market
     mapping(string => Market) public markets;
-
-    // marketId => user => side => amount staked
     mapping(string => mapping(address => mapping(Side => uint256))) public stakes;
-
-    // marketId => user => amount voted in DAO dispute
     mapping(string => mapping(address => uint256)) public userVotes;
-
-    // marketId => user => whether they've already claimed
     mapping(string => mapping(address => bool)) public claimed;
 
     event MarketCreated(string marketId, uint256 stakingEndTime, uint256 resolutionTime);
@@ -70,9 +60,6 @@ contract AgentArena {
         treasury = _treasury;
     }
 
-    // ---- Owner / Pipeline Functions ----
-
-    // ১. মার্কেট ক্রিয়েট করার সময় টাইম-লক প্যারামিটার ইন্টিগ্রেশন
     function createMarket(
         string calldata marketId, 
         uint256 stakingDuration, 
@@ -87,8 +74,8 @@ contract AgentArena {
             tentativeWinner: Side.NONE,
             hawkTotal: 0,
             doveTotal: 0,
-            stakingEndTime: block.timestamp + stakingDuration,     // যেমন: ২৪ ঘণ্টা = 86400
-            resolutionTime: block.timestamp + resolutionDuration, // যেমন: ৪৮ ঘণ্টা = 172800
+            stakingEndTime: block.timestamp + stakingDuration,     
+            resolutionTime: block.timestamp + resolutionDuration, 
             aiResolutionTime: 0,
             disputer: address(0),
             hawkVotes: 0,
@@ -99,7 +86,6 @@ contract AgentArena {
         emit MarketCreated(marketId, block.timestamp + stakingDuration, block.timestamp + resolutionDuration);
     }
 
-    // ২. আপনার গিটহাব অ্যাকশন স্ক্রিপ্ট (Groq) এখন সরাসরি নিষ্পত্তির বদলে এই ফাংশনটি কল করবে
     function declareWinnerByAI(string calldata marketId, Side winningSide) external onlyOwner {
         Market storage m = markets[marketId];
         require(m.exists, "Market does not exist");
@@ -114,44 +100,34 @@ contract AgentArena {
         emit AIResolved(marketId, winningSide);
     }
 
-    // ৩. ২৪ ঘণ্টা শেষ হলে মার্কেট ফাইনাল ও রেভিনিউ ডিস্ট্রিবিউশন করার অটোমেটেড লজিক
     function finalizeMarket(string calldata marketId) external {
         Market storage m = markets[marketId];
         require(m.exists, "Market does not exist");
 
         if (m.status == Status.AI_RESOLVED && block.timestamp > m.aiResolutionTime + DISPUTE_WINDOW) {
-            // কেউ চ্যালেঞ্জ করেনি -> AI-এর সিদ্ধান্তই ফাইনাল
             m.winner = m.tentativeWinner;
             m.status = Status.FINALIZED;
             emit Finalized(marketId, m.winner);
         } 
         else if (m.status == Status.DISPUTED && block.timestamp > m.aiResolutionTime + DISPUTE_WINDOW + (24 * 60 * 60)) {
-            // ডিসপিউট উইন্ডো এবং ভোটের সময় (আরও ২৪ ঘণ্টা) পার হয়েছে
             m.winner = m.hawkVotes > m.doveVotes ? Side.HAWK : Side.DOVE;
             m.status = Status.FINALIZED;
 
-            // ডিসপিউট ফি সেটেলমেন্ট লজিক
             if (m.winner != m.tentativeWinner) {
-                // চ্যালেঞ্জার রাইট ছিল! ৫০ USDC ফেরত
                 payable(m.disputer).transfer(DISPUTE_FEE);
             } else {
-                // চ্যালেঞ্জার রং ছিল! ৫০ USDC-র ৩০% প্রফিট সরাসরি ট্রেজারিতে চলে যাবে
                 uint256 treasuryShare = (DISPUTE_FEE * TREASURY_DISPUTE_SHARE_BPS) / 10000;
                 payable(treasury).transfer(treasuryShare);
-                // বাকি ৭০% লজিং পুলে অ্যাড হয়ে উইনারদের বোনাস হিসেবে থেকে যাবে
             }
             emit Finalized(marketId, m.winner);
         }
     }
 
-    // ---- User functions ----
-
-    // ৪. স্টেক করার সময় Anti-MEV টাইম-লক গেট বসানো হয়েছে
     function stake(string calldata marketId, Side side) external payable {
         Market storage m = markets[marketId];
         require(m.exists, "Market does not exist");
         require(m.status == Status.OPEN, "Market closed");
-        require(block.timestamp <= m.stakingEndTime, "Staking period has ended"); // MEV Lock
+        require(block.timestamp <= m.stakingEndTime, "Staking period has ended"); 
         require(side == Side.HAWK || side == Side.DOVE, "Invalid side");
         require(msg.value > 0, "Stake must be > 0");
 
@@ -166,7 +142,6 @@ contract AgentArena {
         emit Staked(marketId, msg.sender, side, msg.value);
     }
 
-    // ৫. ৫০ USDC দিয়ে AI এর রায়কে চ্যালেঞ্জ করার ফাংশন
     function disputeMarket(string calldata marketId) external payable {
         Market storage m = markets[marketId];
         require(m.exists, "Market does not exist");
@@ -181,7 +156,6 @@ contract AgentArena {
         emit Disputed(marketId, msg.sender);
     }
 
-    // ৬. ডিসপিউট করা মার্কেটে কমিউনিটি ভোটিং
     function voteOnDispute(string calldata marketId, Side side) external payable {
         Market storage m = markets[marketId];
         require(m.status == Status.DISPUTED, "Market is not disputed");
@@ -199,7 +173,7 @@ contract AgentArena {
         emit DAOExceptionVoted(marketId, msg.sender, side, msg.value);
     }
 
-    // ৭. ক্লেম করার সময় ১.৫% রেভিনিউ ফি কালেক্ট করার লজিক
+    // Stack limiting এড়াতে Scoped bracket `{}` ব্যবহার করে অপ্টিমাইজড claim ফাংশন
     function claim(string calldata marketId) external {
         Market storage m = markets[marketId];
         require(m.exists, "Market does not exist");
@@ -207,42 +181,33 @@ contract AgentArena {
         require(!claimed[marketId][msg.sender], "Already claimed");
 
         Side winSide = m.winner;
-        uint256 userWinningStake = stakes[marketId][msg.sender][winSide];
+        uint256 totalUserStaked = stakes[marketId][msg.sender][winSide];
         
-        // যদি ইউজার ডিসপিউটের সময় ভোটে অংশ নিয়ে জিতে থাকে, তবে তার ভোটের টাকাও উইনিং পুলে যোগ হবে
-        uint256 userVoteStake = userVotes[marketId][msg.sender];
-        
-        // টোটাল উইনিং এলিমেন্ট সামআপ করা
-        uint256 totalUserStaked = userWinningStake;
         if ((winSide == Side.HAWK && m.hawkVotes > m.doveVotes) || (winSide == Side.DOVE && m.doveVotes > m.hawkVotes)) {
-            totalUserStaked += userVoteStake;
+            totalUserStaked += userVotes[marketId][msg.sender];
         }
         
         require(totalUserStaked > 0, "Nothing to claim");
 
-        uint256 winningPoolTotal = winSide == Side.HAWK ? m.hawkTotal : m.doveTotal;
-        uint256 losingPoolTotal = winSide == Side.HAWK ? m.doveTotal : m.hawkTotal;
-
-        // Payout ক্যালকুলেশন
         uint256 payout = totalUserStaked;
-        if (winningPoolTotal > 0 && losingPoolTotal > 0) {
-            payout += (totalUserStaked * losingPoolTotal) / winningPoolTotal;
-        }
+        {
+            uint256 winningPoolTotal = winSide == Side.HAWK ? m.hawkTotal : m.doveTotal;
+            uint256 losingPoolTotal = winSide == Side.HAWK ? m.doveTotal : m.hawkTotal;
+            if (winningPoolTotal > 0 && losingPoolTotal > 0) {
+                payout += (totalUserStaked * losingPoolTotal) / winningPoolTotal;
+            }
+        } // winningPoolTotal এবং losingPoolTotal এখান থেকে স্ট্যাক মেমোরি খালি করে দেবে
 
         claimed[marketId][msg.sender] = true;
 
-        // মেইননেট রেভিনিউ অপ্টিমাইজেশন: ১.৫% প্ল্যাটফর্ম ফি কাটা
         uint256 platformFee = (payout * PROTOCOL_FEE_BPS) / 10000;
-        uint256 userNetPayout = payout - platformFee;
 
-        // ১. প্ল্যাটফর্ম ফি আপনার ট্রেজারিতে ট্র্যান্সফার
         (bool feeSent, ) = treasury.call{value: platformFee}("");
         require(feeSent, "Protocol fee transfer failed");
 
-        // ২. ইউজারকে তার পাওনা দেওয়া
-        (bool sent, ) = msg.sender.call{value: userNetPayout}("");
+        (bool sent, ) = msg.sender.call{value: payout - platformFee}("");
         require(sent, "Payout transfer failed");
 
-        emit Claimed(marketId, msg.sender, userNetPayout);
+        emit Claimed(marketId, msg.sender, payout - platformFee);
     }
 }

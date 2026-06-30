@@ -457,6 +457,8 @@ async function main() {
   const { data: explicitDue, error: err1 } = await supabase
     .from("events")
     .select("id, severity, created_at, source_title, category, market_threshold, resolution_at")
+    .eq("market_created", true)
+    .eq("market_resolved", false)
     .not("resolution_at", "is", null)
     .lte("resolution_at", now)
     .order("resolution_at", { ascending: true });
@@ -468,6 +470,8 @@ async function main() {
   const { data: implicitDue, error: err2 } = await supabase
     .from("events")
     .select("id, severity, created_at, source_title, category, market_threshold, resolution_at")
+    .eq("market_created", true)
+    .eq("market_resolved", false)
     .is("resolution_at", null)
     .lte("created_at", cutoff)
     .order("created_at", { ascending: true });
@@ -509,8 +513,10 @@ async function main() {
     }
 
     if (Number(market.status) !== 0) {
+      // Already resolved on-chain but Supabase not updated — backfill silently
+      await supabase.from("events").update({ market_resolved: true }).eq("id", event.id);
       skippedAlready++;
-      continue; // already resolved on-chain, silent skip
+      continue;
     }
 
     const threshold = event.market_threshold ?? (event.severity + 5);
@@ -541,6 +547,13 @@ async function main() {
       const receipt = await tx.wait();
       console.log(`  confirmed in block ${receipt.blockNumber}. Winner: ${consensus.outcome}`);
       resolvedCount++;
+      // Mark as resolved in Supabase so future runs skip it instantly
+      const { error: updateErr } = await supabase
+        .from("events")
+        .update({ market_resolved: true })
+        .eq("id", event.id);
+      if (updateErr) console.warn(`  Supabase update failed: ${updateErr.message}`);
+      else console.log(`  Supabase marked market_resolved=true.`);
     } catch (err) {
       console.error(`  Failed to resolve ${marketId}: ${err.message}`);
     }

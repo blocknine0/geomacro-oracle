@@ -2,7 +2,7 @@
 import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
-const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC0226c1AC816B7b9D740ca284AC342D0b704CE6D";
+const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase());
 
 const CONTRACT_ABI = [

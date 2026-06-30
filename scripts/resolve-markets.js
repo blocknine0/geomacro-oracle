@@ -29,9 +29,26 @@ const GROQ_BASE_DELAY_MS = 8000;  // 8s base — Groq free tier resets every 60s
 const GROQ_BACKOFF_FACTOR = 2;    // 8s → 16s → 32s → 64s
 
 // RPC chunking config — kept conservative to stay under QuickNode's 100 req/s limit
-const BLOCK_CHUNK_SIZE = 5000;        // was 10000; smaller = fewer calls per chunk
-const INTER_CHUNK_DELAY_MS = 1000;    // was 200ms; 1s breathing room between chunks
+const BLOCK_CHUNK_SIZE = 5000;         // smaller = fewer calls per chunk
+const INTER_CHUNK_DELAY_MS = 1000;     // 1s breathing room between chunks
 const INTER_MARKET_RPC_DELAY_MS = 300; // delay after each contract.markets() call
+
+// Trusted news domains for geopolitical/financial events (NewsAPI `domains` filter)
+const TRUSTED_DOMAINS = [
+  "reuters.com", "apnews.com", "bbc.com", "bbc.co.uk",
+  "aljazeera.com", "theguardian.com", "nytimes.com",
+  "wsj.com", "ft.com", "bloomberg.com", "economist.com",
+  "foreignpolicy.com", "politico.com", "axios.com",
+].join(",");
+
+// Stop words stripped from source_title before building search queries
+const STOP_WORDS = new Set([
+  "a","an","the","and","or","but","in","on","at","to","for","of","with",
+  "by","from","as","is","was","are","were","be","been","being","have",
+  "has","had","do","does","did","will","would","could","should","may",
+  "might","shall","can","its","it","this","that","these","those","after",
+  "amid","new","says","say","over","under","into","out","up","down",
+]);
 
 const CONTRACT_ABI = [
   "event MarketCreated(string marketId)",
@@ -40,6 +57,38 @@ const CONTRACT_ABI = [
 ];
 
 const SIDE = { NONE: 0, HAWK: 1, DOVE: 2 };
+
+// ── Keyword extraction ────────────────────────────────────────────────────────
+// Strips stop words and punctuation, returns top N meaningful keywords.
+// Example: "Federal Reserve faces uncertainty under new chairman Kevin Warsh"
+//          → "Federal Reserve Kevin Warsh interest rate"
+function extractKeywords(title, maxWords = 6) {
+  const words = title
+    .replace(/['"(),]/g, "")
+    .split(/\s+/)
+    .filter((w) => w.length > 2 && !STOP_WORDS.has(w.toLowerCase()));
+  // Deduplicate while preserving order
+  const seen = new Set();
+  const unique = [];
+  for (const w of words) {
+    const key = w.toLowerCase();
+    if (!seen.has(key)) { seen.add(key); unique.push(w); }
+  }
+  return unique.slice(0, maxWords).join(" ");
+}
+
+// ── Relevance check ───────────────────────────────────────────────────────────
+// Returns true if at least `minMatches` keywords from the event title appear
+// in the article text (title + description/trailText). Prevents Guardian/NewsAPI
+// from returning completely unrelated trending articles.
+function isArticleRelevant(articleText, eventTitle, minMatches = 2) {
+  const keywords = extractKeywords(eventTitle, 8)
+    .toLowerCase()
+    .split(/\s+/);
+  const haystack = articleText.toLowerCase();
+  const matches = keywords.filter((kw) => haystack.includes(kw)).length;
+  return matches >= minMatches;
+}
 
 // ── RPC helpers with retry ────────────────────────────────────────────────────
 function isRpcRateLimit(err) {
@@ -89,34 +138,23 @@ async function groqWithRetry(payload, groqKey, label = "") {
       body: JSON.stringify(payload),
     });
 
-    // Rate limited — wait and retry
     if (res.status === 429) {
       const retryAfter = res.headers.get("retry-after");
-      const waitMs = retryAfter
-        ? parseInt(retryAfter, 10) * 1000 + 1000
-        : delay;
-      console.warn(
-        `  ${label} Rate limited (429). Waiting ${(waitMs / 1000).toFixed(0)}s before retry ${attempt}/${GROQ_MAX_RETRIES}...`
-      );
+      const waitMs = retryAfter ? parseInt(retryAfter, 10) * 1000 + 1000 : delay;
+      console.warn(`  ${label} Rate limited (429). Waiting ${(waitMs / 1000).toFixed(0)}s before retry ${attempt}/${GROQ_MAX_RETRIES}...`);
       await new Promise((r) => setTimeout(r, waitMs));
       delay *= GROQ_BACKOFF_FACTOR;
       continue;
     }
 
-    // Server error — retry with backoff
     if (res.status >= 500) {
-      console.warn(
-        `  ${label} Groq server error ${res.status}. Waiting ${(delay / 1000).toFixed(0)}s before retry ${attempt}/${GROQ_MAX_RETRIES}...`
-      );
+      console.warn(`  ${label} Groq server error ${res.status}. Waiting ${(delay / 1000).toFixed(0)}s before retry ${attempt}/${GROQ_MAX_RETRIES}...`);
       await new Promise((r) => setTimeout(r, delay));
       delay *= GROQ_BACKOFF_FACTOR;
       continue;
     }
 
-    // Any other non-200 — don't retry
-    if (!res.ok) {
-      throw new Error(`Groq error ${res.status}`);
-    }
+    if (!res.ok) throw new Error(`Groq error ${res.status}`);
 
     return await res.json();
   }
@@ -124,38 +162,100 @@ async function groqWithRetry(payload, groqKey, label = "") {
   throw new Error(`Groq: max retries (${GROQ_MAX_RETRIES}) exceeded for ${label}`);
 }
 
-// ── NewsAPI context fetch with Guardian fallback ──────────────────────────────
-async function fetchLatestNewsContext(event, newsApiKey, guardianApiKey) {
-  const keywords = event.source_title
-    .replace(/['"]/g, "")
-    .split(" ")
-    .slice(0, 6)
-    .join(" ");
+// ── NewsAPI fetch ─────────────────────────────────────────────────────────────
+// Uses smart keyword extraction + trusted domains + relevance filtering.
+async function fetchFromNewsAPI(event, newsApiKey, from) {
+  const query = extractKeywords(event.source_title, 6);
+  console.log(`  NewsAPI query: "${query}"`);
 
-  const from = new Date(
-    new Date(event.created_at).getTime() - 24 * 60 * 60 * 1000
-  ).toISOString();
+  // First try: focused query on trusted domains
+  const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&from=${from}&sortBy=publishedAt&pageSize=10&language=en&domains=${encodeURIComponent(TRUSTED_DOMAINS)}&apiKey=${newsApiKey}`;
+  const res = await fetch(url);
+
+  if (res.status === 429) {
+    console.warn(`  NewsAPI 429 (rate limit).`);
+    return null;
+  }
+  if (!res.ok) throw new Error(`NewsAPI error: ${res.status}`);
+
+  const data = await res.json();
+  let articles = (data.articles || []);
+
+  // Filter to relevant articles only
+  const relevant = articles.filter((a) => {
+    const text = `${a.title || ""} ${a.description || ""}`;
+    return isArticleRelevant(text, event.source_title);
+  });
+
+  // If trusted-domain search returned nothing relevant, retry without domain filter
+  if (relevant.length === 0 && articles.length === 0) {
+    console.warn(`  NewsAPI: no results on trusted domains, retrying without domain filter...`);
+    const url2 = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&from=${from}&sortBy=publishedAt&pageSize=10&language=en&apiKey=${newsApiKey}`;
+    const res2 = await fetch(url2);
+    if (res2.ok) {
+      const data2 = await res2.json();
+      const all = (data2.articles || []);
+      const rel2 = all.filter((a) => {
+        const text = `${a.title || ""} ${a.description || ""}`;
+        return isArticleRelevant(text, event.source_title);
+      });
+      if (rel2.length > 0) return rel2.slice(0, 5);
+    }
+    return null; // nothing useful
+  }
+
+  if (relevant.length === 0) {
+    console.warn(`  NewsAPI: ${articles.length} articles returned but none are relevant to this event.`);
+    return null;
+  }
+
+  return relevant.slice(0, 5);
+}
+
+// ── Guardian API fetch ────────────────────────────────────────────────────────
+async function fetchFromGuardian(event, guardianApiKey, fromDate) {
+  const query = extractKeywords(event.source_title, 6);
+  console.log(`  Guardian query: "${query}"`);
+
+  const url = `https://content.guardianapis.com/search?q=${encodeURIComponent(query)}&from-date=${fromDate}&order-by=newest&page-size=10&show-fields=trailText&api-key=${guardianApiKey}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Guardian API error: ${res.status}`);
+
+  const data = await res.json();
+  const articles = (data.response?.results || []);
+
+  // Relevance filter — same logic as NewsAPI
+  const relevant = articles.filter((a) => {
+    const text = `${a.webTitle || ""} ${a.fields?.trailText || ""}`;
+    return isArticleRelevant(text, event.source_title);
+  });
+
+  if (relevant.length === 0) {
+    console.warn(`  Guardian: ${articles.length} articles returned but none are relevant to this event.`);
+    return null;
+  }
+
+  return relevant.slice(0, 5);
+}
+
+// ── Combined news context fetch ───────────────────────────────────────────────
+async function fetchLatestNewsContext(event, newsApiKey, guardianApiKey) {
+  // Search from 24h before the event was created up to now
+  const fromTs = new Date(event.created_at).getTime() - 24 * 60 * 60 * 1000;
+  const fromISO = new Date(fromTs).toISOString();
+  const fromDate = fromISO.split("T")[0];
 
   // Try NewsAPI first
   if (newsApiKey) {
     try {
-      const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(keywords)}&from=${from}&sortBy=publishedAt&pageSize=5&language=en&apiKey=${newsApiKey}`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        const articles = (data.articles || []).slice(0, 5);
-        if (articles.length > 0) {
-          const sources = articles.map((a) => a.source?.name || "Unknown");
-          const context = articles
-            .map((a, i) => `[${i + 1}] ${a.source?.name}: ${a.title}. ${a.description || ""}`)
-            .join("\n");
-          console.log(`  News source: NewsAPI`);
-          return { context, sources };
-        }
-      } else if (res.status !== 429) {
-        throw new Error(`NewsAPI error: ${res.status}`);
-      } else {
-        console.warn(`  NewsAPI 429 (rate limit). Trying Guardian API...`);
+      const articles = await fetchFromNewsAPI(event, newsApiKey, fromISO);
+      if (articles && articles.length > 0) {
+        const sources = articles.map((a) => a.source?.name || "Unknown");
+        const context = articles
+          .map((a, i) => `[${i + 1}] ${a.source?.name}: ${a.title}. ${a.description || ""}`)
+          .join("\n");
+        console.log(`  News source: NewsAPI (${articles.length} relevant articles)`);
+        return { context, sources };
       }
     } catch (err) {
       console.warn(`  NewsAPI failed: ${err.message}. Trying Guardian API...`);
@@ -165,17 +265,13 @@ async function fetchLatestNewsContext(event, newsApiKey, guardianApiKey) {
   // Fallback: Guardian API
   if (guardianApiKey) {
     try {
-      const url = `https://content.guardianapis.com/search?q=${encodeURIComponent(keywords)}&from-date=${from.split("T")[0]}&order-by=newest&page-size=5&show-fields=trailText&api-key=${guardianApiKey}`;
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Guardian API error: ${res.status}`);
-      const data = await res.json();
-      const articles = (data.response?.results || []).slice(0, 5);
-      if (articles.length > 0) {
+      const articles = await fetchFromGuardian(event, guardianApiKey, fromDate);
+      if (articles && articles.length > 0) {
         const sources = articles.map(() => "The Guardian");
         const context = articles
           .map((a, i) => `[${i + 1}] The Guardian: ${a.webTitle}. ${a.fields?.trailText || ""}`)
           .join("\n");
-        console.log(`  News source: Guardian API`);
+        console.log(`  News source: Guardian API (${articles.length} relevant articles)`);
         return { context, sources };
       }
     } catch (err) {
@@ -183,34 +279,38 @@ async function fetchLatestNewsContext(event, newsApiKey, guardianApiKey) {
     }
   }
 
-  console.warn(`  No news context available. Proceeding without.`);
-  return { context: "No recent news found for this story.", sources: [] };
+  console.warn(`  No relevant news context found. Proceeding without.`);
+  return { context: "No relevant recent news found for this story.", sources: [] };
 }
 
 // ── Single Groq verdict with retry ────────────────────────────────────────────
 async function singleGroqVerdict(event, newsContext, threshold, groqKey, callIndex) {
-  const prompt = `You are an impartial judge settling a prediction market. Base your verdict ONLY on the news articles provided below. Do not use your own knowledge or assumptions.
+  const hasRealNews = !newsContext.startsWith("No relevant");
 
-Market question: Did "${event.source_title}" escalate past severity ${threshold}/100 within 48 hours?
+  const prompt = `You are an impartial judge settling a prediction market.
+${hasRealNews
+  ? "Base your verdict ONLY on the news articles provided below. Do not use your own knowledge or assumptions."
+  : "No recent news was found. Use your own knowledge of the event to make a best-effort determination, but apply a conservative bias toward DOVE."}
+
+Market question: Did "${event.source_title}" escalate past severity ${threshold}/100 within 48 hours of the market opening?
 
 Category: ${event.category}
 Severity when market opened: ${event.severity}/100
 Escalation threshold: ${threshold}/100
 
-Latest verified news about this story:
-${newsContext}
+${hasRealNews ? `Latest verified news about this story:\n${newsContext}` : `Context: ${newsContext}`}
 
 Rules:
-- HAWK wins if the news shows clear escalation: more conflict, military action, talks collapsed, sanctions imposed, market panic
-- DOVE wins if the news shows de-escalation, talks progressed, situation held steady, or no major developments
-- If news context is insufficient or unclear, choose DOVE
-- Base verdict ONLY on the provided news, not your prior knowledge
+- HAWK wins if there is clear escalation: more conflict, military action, talks collapsed, sanctions imposed, market panic
+- DOVE wins if there is de-escalation, talks progressed, situation held steady, or no major developments
+- If context is insufficient or unclear, choose DOVE with low confidence
+${hasRealNews ? "- IMPORTANT: Only cite headlines that are actually about this specific story. If none of the provided articles are about this story, choose DOVE." : ""}
 
 Respond ONLY with valid JSON:
 {
   "outcome": "HAWK" or "DOVE",
   "confidence": integer 0-100,
-  "reasoning": "one sentence citing a specific headline from the news provided above"
+  "reasoning": "one sentence${hasRealNews ? " citing a specific relevant headline from the news provided above" : " explaining your best-effort assessment"}"
 }`;
 
   const label = `[Call ${callIndex + 1}/${CONSENSUS_CALLS}]`;
@@ -252,12 +352,10 @@ async function getConsensusVerdict(event, newsContext, threshold, groqKey) {
         `  Call ${i + 1}/${CONSENSUS_CALLS}: ${verdict.outcome} (confidence ${verdict.confidence}%) — ${verdict.reasoning}`
       );
     } catch (err) {
-      // Max retries exceeded for this call — count as DOVE and continue
       console.warn(`  Call ${i + 1} failed after retries: ${err.message}. Counting as DOVE.`);
       verdicts.push({ outcome: "DOVE", confidence: 0, reasoning: `error: ${err.message}` });
     }
 
-    // Inter-call delay (longer to stay inside free-tier limits)
     if (i < CONSENSUS_CALLS - 1) {
       console.log(`  Waiting 10s before next consensus call...`);
       await new Promise((r) => setTimeout(r, 10000));
@@ -357,7 +455,6 @@ async function main() {
       () => contract.markets(marketId),
       `markets(${marketId})`
     );
-    // Small delay after each RPC read to avoid bursting
     await new Promise((r) => setTimeout(r, INTER_MARKET_RPC_DELAY_MS));
 
     if (Number(market.status) !== 0) continue;
@@ -393,8 +490,7 @@ async function main() {
     console.log(`\nResolving ${marketId} ("${event.source_title}")`);
     console.log(`  Threshold: ${threshold}, Severity at creation: ${event.severity}`);
 
-    // Fetch verified news context
-    console.log(`  Fetching latest news context from NewsAPI...`);
+    console.log(`  Fetching latest news context...`);
     const { context: newsContext, sources } = (NEWSAPI_KEY || GUARDIAN_API_KEY)
       ? await fetchLatestNewsContext(event, NEWSAPI_KEY, GUARDIAN_API_KEY)
       : { context: "No news API configured.", sources: [] };
@@ -403,7 +499,6 @@ async function main() {
       console.log(`  Verified sources: ${sources.join(", ")}`);
     }
 
-    // 3-call consensus with retry
     console.log(`  Running ${CONSENSUS_CALLS}-call consensus (with exponential backoff)...`);
     const consensus = await getConsensusVerdict(event, newsContext, threshold, GROQ_API_KEY);
 
@@ -423,7 +518,6 @@ async function main() {
       console.error(`  Failed to resolve ${marketId}: ${err.message}`);
     }
 
-    // Delay between markets
     if (resolvedCount < MAX_RESOLUTIONS_PER_RUN) {
       console.log(`  Waiting 5s before next market...`);
       await new Promise((r) => setTimeout(r, 5000));

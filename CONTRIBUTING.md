@@ -1,8 +1,6 @@
 # Contributing
 
-Thanks for taking the time to look at Geomacro. This project is built and
-iterated on inside [Lovable](https://lovable.dev), with two-way GitHub
-sync.
+Thanks for taking the time to look at Geomacro. 
 
 ## Ground rules
 

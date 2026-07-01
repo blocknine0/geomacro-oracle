@@ -2,8 +2,7 @@
 
 ## Supported versions
 
-Only the `main` branch is supported. The deployed preview at
-`https://geomacrooracle.lovable.app` always tracks `main`.
+Only the `main` branch is supported. 
 
 ## Reporting a vulnerability
 
@@ -20,6 +19,6 @@ acknowledge within 72 hours.
 
 ## Out of scope
 
-- Vulnerabilities in third-party services (Lovable, Cloudflare,
-  Firecrawl, Arc RPC) — please report those upstream.
+- Vulnerabilities in third-party service like Cloudflare,
+  Arc RPC = please report those upstream.
 - Wallet-level phishing that does not originate from this codebase.

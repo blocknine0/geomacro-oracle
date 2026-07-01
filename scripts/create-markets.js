@@ -2,18 +2,14 @@
 import { ethers } from "ethers";
 import { createClient } from "@supabase/supabase-js";
 
-// Checksum সুরক্ষিত লেটেস্ট ডিপ্লয়ড কন্ট্রাক্ট অ্যাড্রেস
 const RAW_ADDRESS = process.env.CONTRACT_ADDRESS || "0xC026fDFC40Dcd8F07b6ecFA21b2BF8400Db0FADe";
 const CONTRACT_ADDRESS = ethers.getAddress(RAW_ADDRESS.toLowerCase()); 
 
-// আপনার রিকোয়েস্ট অনুযায়ী প্রতি রানে সর্বোচ্চ ৩০টি মার্কেট তৈরির লিমিট
 const MAX_NEW_MARKETS_PER_RUN = 30; 
 const THRESHOLD_STEP = 5; 
-
 const STAKING_DURATION_SEC = 46 * 60 * 60;   
 const RESOLUTION_DURATION_SEC = 48 * 60 * 60; 
 
-// ABI ডিক্লেয়ারেশন
 const CONTRACT_ABI = [
   "function createMarket(string marketId, uint256 stakingDuration, uint256 resolutionDuration) external",
   "function getMarket(string marketId) view returns (uint8 status, uint256 hawkTotal, uint256 doveTotal, bool exists)",
@@ -28,32 +24,24 @@ async function main() {
   
   const network = await provider.getNetwork();
   console.log(`Connected to Chain ID: ${network.chainId.toString()}`);
-  console.log(`Using contract address: ${CONTRACT_ADDRESS}`);
 
   const wallet = new ethers.Wallet(OWNER_PRIVATE_KEY, provider);
   const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, wallet);
 
-  // চেইনে বাইটকোড ভ্যালিডেশন 
-  const code = await provider.getCode(CONTRACT_ADDRESS);
-  if (code === "0x" || code === "0x00") {
-    console.error("❌ ERROR: No contract bytecode found at this address!");
-    process.exit(1);
-  }
-
-  // ০ থেকে ১০০ সিভিয়ারিটির সব ইভেন্টকে কভার করার ফিল্টার লজিক
+  // 🛑 পার্মানেন্ট ফিক্স: হাবিজাবি ইভেন্ট ফিল্টার করতে সর্বনিম্ন severity ৪০ এবং সর্বোচ্চ ১০০ করা হলো
   const { data: events, error } = await supabase
     .from("events")
     .select("id, source_title, category, severity, created_at, market_created")
     .or("market_created.is.null,market_created.eq.false")
-    .gte("severity", 0)   // সর্বনিম্ন severity ০
-    .lte("severity", 100) // সর্বোচ্চ severity ১০০
+    .gte("severity", 40)   // ২০ বা ৩০ সিভিয়ারিটির নিউজ মার্কেট তৈরি করবে না
+    .lte("severity", 100) 
     .order("created_at", { ascending: false })
     .limit(MAX_NEW_MARKETS_PER_RUN);
 
   if (error) throw new Error(`Supabase error: ${error.message}`);
-  if (!events || events.length === 0) return console.log("No new events matching criteria found.");
+  if (!events || events.length === 0) return console.log("No new unique high-severity events found.");
 
-  console.log(`Found ${events.length} candidate event(s) for new markets.`);
+  console.log(`Found ${events.length} clean candidate event(s) for new markets.`);
 
   for (const event of events) {
     const marketId = `mkt_${event.id}`;
@@ -66,16 +54,16 @@ async function main() {
         const existing = await contract.getMarket(marketId);
         marketExists = existing.exists;
       } catch (decodeErr) {
-        console.log(`Market entry fetch empty for ${marketId}, assuming false.`);
+        // Fallback
       }
 
       if (marketExists) {
-        console.log(`Market ${marketId} already exists. Syncing Supabase.`);
+        console.log(`Market ${marketId} already exists on-chain. Syncing Supabase.`);
         await supabase.from("events").update({ market_created: true, market_threshold: marketThreshold, resolution_at: resolutionAt }).eq("id", event.id);
         continue;
       }
 
-      console.log(`Creating market ${marketId}...`);
+      console.log(`Creating market ${marketId} for: "${event.source_title}"...`);
       const tx = await contract.createMarket(marketId, STAKING_DURATION_SEC, RESOLUTION_DURATION_SEC);
       console.log(`  Transaction sent: ${tx.hash}`);
       const receipt = await tx.wait();

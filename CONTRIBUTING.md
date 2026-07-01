@@ -7,7 +7,7 @@ Thanks for taking the time to look at Geomacro.
 - Run `bun run lint` and `bunx vitest run` before opening a PR.
 - Keep `src/**.server.ts` files out of client imports. Server logic is
   reached via `createServerFn` + `useServerFn`, never via direct import.
-- Never store private keys or API secrets in `VITE_*` env vars — those
+- Never store private keys or API secrets in `VITE_*` env vars = those
   ship to the browser.
 - New onchain interactions must be signed by the user's wallet; the
   server never holds a signing key.

@@ -6,16 +6,10 @@
 //
 // Pipeline:
 // 1. Fetches recent articles from NewsAPI across 4 categories
-// 2. Deduplicates against what's already in Supabase (by URL hash)
+// 2. Deduplicates against what's already in Supabase (by URL & normalized Title)
 // 3. Sends each new article to Groq for severity/confidence/relevance scoring
 // 4. Rejects off-topic articles before they reach the feed
 // 5. Inserts passing articles into the Supabase events table
-//
-// Required environment variables (set as GitHub Secrets):
-//   NEWSAPI_KEY        - NewsAPI.org API key
-//   GROQ_API_KEY       - Groq API key
-//   APP_SUPABASE_URL   - Supabase project URL
-//   APP_SUPABASE_ANON_KEY - Supabase anon key
 
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
@@ -60,8 +54,13 @@ const CATEGORIES = [
 const MAX_PER_CATEGORY = 2; // reduced to avoid Groq rate limits
 const HOURS_BACK = 48;
 
-function urlHash(url) {
-  return crypto.createHash("sha256").update(url).digest("hex").slice(0, 16);
+// টাইটেল ম্যাচিং নিখুঁত করার জন্য স্ট্রিং নরমালাইজ করার ফাংশন
+function normalizeTitle(title) {
+  if (!title) return "";
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "") // শুধু আলফানিউমেরিক ক্যারেক্টার রাখবে (স্পেস বা স্পেশাল সাইন বাদ)
+    .trim();
 }
 
 async function fetchNewsAPI(query, apiKey) {
@@ -92,7 +91,6 @@ async function fetchGuardianAPI(query, apiKey) {
 }
 
 async function fetchArticles(query, newsApiKey, guardianApiKey) {
-  // Try NewsAPI first
   if (newsApiKey) {
     try {
       const articles = await fetchNewsAPI(query, newsApiKey);
@@ -105,7 +103,6 @@ async function fetchArticles(query, newsApiKey, guardianApiKey) {
       }
     }
   }
-  // Fallback: Guardian API
   if (guardianApiKey) {
     try {
       return await fetchGuardianAPI(query, guardianApiKey);
@@ -179,21 +176,26 @@ async function main() {
 
   const supabase = createClient(APP_SUPABASE_URL, APP_SUPABASE_ANON_KEY);
 
-  // Fetch existing URLs so we don't insert duplicates
+  // 🛑 পার্মানেন্ট ফিক্স: ইউআরএল এর সাথে সোর্স টাইটেলও তুলে আনা হচ্ছে ডুপ্লিকেট চেকের জন্য
   const { data: existing } = await supabase
     .from("events")
-    .select("source_url")
+    .select("source_url, source_title")
     .order("created_at", { ascending: false })
     .limit(500);
 
   const existingUrls = new Set((existing || []).map((e) => e.source_url));
-  console.log(`${existingUrls.size} existing events in Supabase.`);
+  
+  // 🛑 পার্মানেন্ট ফিক্স: এক্সিস্টিং টাইটেলগুলোকে নরমালাইজ করে হ্যাশ সেটে রাখা
+  const existingTitles = new Set((existing || []).map((e) => normalizeTitle(e.source_title)));
+  
+  console.log(`${existingUrls.size} existing unique URLs and ${existingTitles.size} existing titles fetched from Supabase.`);
 
   let totalInserted = 0;
 
   for (const category of CATEGORIES) {
     console.log(`\nProcessing category: ${category.name}`);
-    const seen = new Set();
+    const seenUrls = new Set();
+    const seenTitles = new Set();
     const candidates = [];
 
     for (const query of category.queries) {
@@ -207,14 +209,22 @@ async function main() {
 
       for (const article of articles) {
         if (!article.url || !article.title) continue;
-        if (existingUrls.has(article.url)) continue;
-        if (seen.has(article.url)) continue;
-        seen.add(article.url);
+        
+        const normTitle = normalizeTitle(article.title);
+
+        // 🛑 ১. ইউআরএল অথবা টাইটেল আগে থেকেই সুপাবেসে আছে কিনা চেক করা
+        if (existingUrls.has(article.url) || existingTitles.has(normTitle)) continue;
+        
+        // 🛑 ২. এই কারেন্ট রান বা লুপের মধ্যে ইতিমধ্যে দেখা হয়েছে কিনা চেক করা
+        if (seenUrls.has(article.url) || seenTitles.has(normTitle)) continue;
+        
+        seenUrls.add(article.url);
+        seenTitles.add(normTitle);
         candidates.push(article);
       }
     }
 
-    console.log(`  ${candidates.length} new candidate articles found.`);
+    console.log(`  ${candidates.length} new clean candidate articles found.`);
 
     let insertedThisCategory = 0;
 
@@ -230,7 +240,7 @@ async function main() {
       }
 
       if (!classification || !classification.relevant) {
-        console.log(`  Rejected: "${article.title}"`);
+        console.log(`  Rejected by LLM relevance check: "${article.title}"`);
         continue;
       }
 
@@ -260,9 +270,11 @@ async function main() {
       }
 
       console.log(
-        `  Inserted: "${article.title}" (severity ${classification.severity})`
+        `  ✅ Successfully Inserted: "${article.title}" (severity ${classification.severity})`
       );
+      
       existingUrls.add(article.url);
+      existingTitles.add(normalizeTitle(article.title));
       insertedThisCategory++;
       totalInserted++;
 
@@ -273,7 +285,7 @@ async function main() {
     console.log(`  Inserted ${insertedThisCategory} events for ${category.name}.`);
   }
 
-  console.log(`\nDone. Total inserted: ${totalInserted} events.`);
+  console.log(`\nDone. Total unique inserted: ${totalInserted} events.`);
 }
 
 main().catch((err) => {

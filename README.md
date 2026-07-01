@@ -126,7 +126,7 @@ scripts/
 - [x] Automated finalization after the 24-hour public dispute window
 - [x] Dynamic Arena with no hardcoded markets, pure on-chain discovery
 - [x] Supabase schema-drift checker to catch backend/script mismatches early
-- [ ] On-chain dispute fee/threshold decimal fix (`10**6` → `10**18`) — ready, pending redeploy
+- [ ] On-chain dispute fee/threshold decimal fix (`10**6` → `10**18`) = ready, pending redeploy
 - [ ] Fully decentralized dispute-based resolution as the primary mechanism (currently AI-first with an on-chain dispute backstop)
 - [ ] Mainnet deployment
 - [ ] Public track record showing how often HAWK vs. DOVE actually calls it right

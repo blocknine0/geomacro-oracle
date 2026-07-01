@@ -13,7 +13,7 @@
 
 Geomacro is a real-time intelligence terminal and prediction market across the four pillars that move global risk: **geopolitics, rare earth supply, macroeconomics and crypto liquidity.**
 
-Every breaking headline becomes a tradable 48-hour contract on Arc. An LLM scores each event for severity. The USDC staked on each side (HAWK vs DOVE) becomes the live implied probability of escalation. Settle onchain, no custodian, no middleman.
+Every breaking headline becomes a tradable 46-hour contract on Arc. An LLM scores each event for severity. The USDC staked on each side (HAWK vs DOVE) becomes the live implied probability of escalation. Settle onchain, no custodian, no middleman.
 
 ---
 

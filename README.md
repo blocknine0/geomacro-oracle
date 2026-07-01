@@ -41,7 +41,7 @@ NewsAPI / Guardian  →  Groq (llama-3.1-8b-instant)  →  Supabase  →  Live F
 
 **Ingestion.** NewsAPI (falling back to The Guardian on rate limits) pulls fresh articles across four categories: geopolitics, macro, rare-earth/commodities and crypto. Off-topic articles are rejected before they reach the feed via an LLM relevance gate, not just keyword filtering.
 
-**Classification.** Groq (`llama-3.1-8b-instant`) scores each article for severity (0-100), confidence (0-100), and generates a short narrative + summary — all stored directly on the event row.
+**Classification.** Groq (`llama-3.1-8b-instant`) scores each article for severity (0-100), confidence (0-100), and generates a short narrative + summary = all stored directly on the event row.
 
 **Storage.** Supabase holds the event log (`events` table). The frontend reads straight from it, with Realtime subscriptions for instant updates.
 

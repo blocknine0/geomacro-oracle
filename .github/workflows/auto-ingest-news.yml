@@ -1,5 +1,4 @@
 name: Auto-ingest news
-
 # Runs every 2 hours, 1 hour before the market-creation workflow,
 # so fresh events are in Supabase by the time create-markets.js runs.
 # Can also be triggered manually from the Actions tab.
@@ -7,29 +6,34 @@ on:
   schedule:
     - cron: "0 */2 * * *"
   workflow_dispatch: {}
-
 jobs:
   ingest-news:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "22"
-
       # package.json থেকে groq-sdk, dotenv, node-fetch সহ সব ডিপেন্ডেন্সি একসাথে ইনস্টল করবে
       - name: Install dependencies
         run: npm install
-
+      - name: Debug Groq connectivity
+        env:
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          echo "Key length: ${#GROQ_API_KEY}"
+          curl -s -o /tmp/groq_response.json -w "HTTP Status: %{http_code}\n" https://api.groq.com/openai/v1/models \
+            -H "Authorization: Bearer $GROQ_API_KEY"
+          echo "Response body:"
+          cat /tmp/groq_response.json
       - name: Run news ingestion script
         env:
           NEWSAPI_KEY: ${{ secrets.NEWSAPI_KEY }}
           GUARDIAN_API_KEY: ${{ secrets.GUARDIAN_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          # স্ক্রিপ্টের ভেরিয়েবল নামের সাথে মিলিয়ে দেওয়া হলো
+          # স্ক্রিপ্টের ভেরিয়েবল নামের সাথে মিলিয়ে দেওয়া হলো
           SUPABASE_URL: ${{ secrets.APP_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.APP_SUPABASE_ANON_KEY }}
         run: node scripts/ingest-news.js

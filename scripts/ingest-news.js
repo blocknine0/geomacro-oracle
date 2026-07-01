@@ -14,7 +14,9 @@ const supabase = createClient(
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
   timeout: 20 * 1000, // ২০ সেকেন্ড টাইমআউট লিমিট
-  maxRetries: 3        // কানেকশন ড্রপ করলে অটো ৩ বার ট্রাই করবে
+  maxRetries: 3,       // কানেকশন ড্রপ করলে অটো ৩ বার ট্রাই করবে
+  fetch: fetch          // 🛠️ undici (built-in fetch)-এর POST premature-close bug
+                         // এড়াতে node-fetch explicitly পাস করা হলো
 });
 
 // ২. সম্পূর্ণ আন্তর্জাতিক লেভেলের গ্লোবাল ক্যাটাগরি এবং কুয়েরি সেট
